@@ -6,26 +6,97 @@
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* 라이트 모드 색상 */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f9fafb;
+  --bg-gradient-from: rgb(239 246 255);
+  --bg-gradient-to: rgb(224 231 255);
+  --text-primary: #111827;
+  --text-secondary: #6b7280;
+  --text-accent: #3b82f6;
+  --button-bg: #3b82f6;
+  --button-hover: #2563eb;
+  --border-color: #e5e7eb;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+}
+
+.dark {
+  /* 다크 모드 색상 */
+  --bg-primary: #111827;
+  --bg-secondary: #1f2937;
+  --bg-gradient-from: rgb(17 24 39);
+  --bg-gradient-to: rgb(30 58 138);
+  --text-primary: #f9fafb;
+  --text-secondary: #d1d5db;
+  --text-accent: #60a5fa;
+  --button-bg: #3b82f6;
+  --button-hover: #2563eb;
+  --border-color: #374151;
+  --shadow-color: rgba(0, 0, 0, 0.3);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg-primary: #111827;
+    --bg-secondary: #1f2937;
+    --bg-gradient-from: rgb(17 24 39);
+    --bg-gradient-to: rgb(30 58 138);
+    --text-primary: #f9fafb;
+    --text-secondary: #d1d5db;
+    --text-accent: #60a5fa;
+    --button-bg: #3b82f6;
+    --button-hover: #2563eb;
+    --border-color: #374151;
+    --shadow-color: rgba(0, 0, 0, 0.3);
   }
 }
 
-/* 다크모드 클래스 기반 설정 추가 */
-.dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-  transition: background-color 0.2s ease, color 0.2s ease;
+/* 글로벌 다크모드 스타일 */
+.theme-transition {
+  transition: all 0.3s ease;
+}
+
+.bg-primary {
+  background-color: var(--bg-primary);
+}
+
+.bg-secondary {
+  background-color: var(--bg-secondary);
+}
+
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-accent {
+  color: var(--text-accent);
+}
+
+.btn-primary {
+  background-color: var(--button-bg);
+  color: white;
+  transition: background-color 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: var(--button-hover);
+}
+
+.border-theme {
+  border-color: var(--border-color);
+}
+
+.shadow-theme {
+  box-shadow: 0 4px 6px -1px var(--shadow-color);
 }

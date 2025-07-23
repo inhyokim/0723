@@ -3,13 +3,28 @@
 import { useTheme } from '@/contexts/ThemeContext';
 
 export default function DarkModeToggle() {
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark, toggleTheme, mounted } = useTheme();
+
+  // SSR 중에는 렌더링하지 않음
+  if (!mounted) {
+    return (
+      <div className="fixed top-4 right-4 z-50 p-3 rounded-full bg-gray-200 shadow-lg w-12 h-12 opacity-50">
+        <div className="w-6 h-6 relative animate-pulse bg-gray-400 rounded"></div>
+      </div>
+    );
+  }
+
+  const handleClick = () => {
+    console.log('다크모드 버튼 클릭됨, 현재 상태:', isDark ? 'dark' : 'light');
+    toggleTheme();
+  };
 
   return (
     <button
-      onClick={toggleTheme}
+      onClick={handleClick}
       className="fixed top-4 right-4 z-50 p-3 rounded-full bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200 shadow-lg"
       aria-label="다크모드 토글"
+      title={isDark ? '라이트모드로 전환' : '다크모드로 전환'}
     >
       <div className="w-6 h-6 relative">
         {isDark ? (
