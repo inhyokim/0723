@@ -7,24 +7,38 @@ export default function PostsPage() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [apiInfo, setApiInfo] = useState(null);
 
   useEffect(() => {
-    fetch('https://jsonplaceholder.typicode.com/posts')
+    // 새로운 내부 API 호출
+    fetch('/api/posts')
       .then(res => {
         if (!res.ok) {
-          throw new Error('Failed to fetch posts');
+          throw new Error(`API 호출 실패: ${res.status}`);
         }
         return res.json();
       })
-      .then(data => {
-        console.log('전체 데이터:', data);
-        // 절반만 표시 (100개 중 50개)
-        const halfPosts = data.slice(0, Math.floor(data.length / 2));
-        console.log('절반 데이터:', halfPosts);
-        setPosts(halfPosts);
+      .then(response => {
+        console.log('API 응답:', response);
+        
+        if (response.success) {
+          // 새로운 응답 구조에 맞게 데이터 추출
+          setPosts(response.data.posts);
+          setApiInfo({
+            totalOriginal: response.data.totalOriginal,
+            totalReturned: response.data.totalReturned,
+            filtered: response.data.filtered,
+            source: response.source,
+            timestamp: response.timestamp
+          });
+        } else {
+          throw new Error(response.error || '알 수 없는 에러');
+        }
+        
         setLoading(false);
       })
       .catch(err => {
+        console.error('API 호출 에러:', err);
         setError(err.message);
         setLoading(false);
       });
@@ -35,7 +49,7 @@ export default function PostsPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 dark:border-blue-400 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-300">포스트를 불러오고 있습니다...</p>
+          <p className="text-gray-600 dark:text-gray-300">API에서 포스트를 불러오고 있습니다...</p>
         </div>
       </div>
     );
@@ -45,7 +59,7 @@ export default function PostsPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <p className="text-red-500 dark:text-red-400 text-lg mb-4">❌ 에러가 발생했습니다: {error}</p>
+          <p className="text-red-500 dark:text-red-400 text-lg mb-4">❌ API 에러: {error}</p>
           <Link 
             href="/" 
             className="inline-block bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
@@ -71,8 +85,28 @@ export default function PostsPage() {
         </div>
 
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">📝 Blog Posts (절반만 표시)</h1>
-          <p className="text-gray-600 dark:text-gray-300">JSONPlaceholder API에서 가져온 {posts.length}개의 포스트 (전체 100개 중 절반)</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">📝 Blog Posts (API 처리)</h1>
+          <p className="text-gray-600 dark:text-gray-300">
+            내부 API에서 가져온 {posts.length}개의 포스트
+          </p>
+          
+          {/* API 정보 표시 */}
+          {apiInfo && (
+            <div className="mt-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 text-sm">
+              <div className="grid grid-cols-2 gap-4 text-left">
+                <div>
+                  <strong className="text-blue-800 dark:text-blue-400">📊 데이터 정보:</strong>
+                  <p className="text-blue-700 dark:text-blue-300">원본: {apiInfo.totalOriginal}개</p>
+                  <p className="text-blue-700 dark:text-blue-300">반환: {apiInfo.totalReturned}개</p>
+                </div>
+                <div>
+                  <strong className="text-blue-800 dark:text-blue-400">🔧 처리 방식:</strong>
+                  <p className="text-blue-700 dark:text-blue-300">{apiInfo.filtered}</p>
+                  <p className="text-blue-700 dark:text-blue-300">출처: {apiInfo.source}</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -105,10 +139,10 @@ export default function PostsPage() {
 
         <div className="text-center mt-12">
           <p className="text-gray-500 dark:text-gray-400 text-sm">
-            데이터 출처: <a href="https://jsonplaceholder.typicode.com" className="text-blue-500 hover:underline dark:text-blue-400">JSONPlaceholder</a>
+            데이터 출처: <span className="text-blue-500 dark:text-blue-400">내부 API (/api/posts)</span>
           </p>
           <p className="text-gray-400 dark:text-gray-500 text-xs mt-2">
-            💡 전체 100개 중 처음 50개만 표시됩니다
+            💡 API 서버에서 절반 처리 후 반환
           </p>
         </div>
       </div>
