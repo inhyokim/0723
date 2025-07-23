@@ -17,8 +17,11 @@ export default function PostsPage() {
         return res.json();
       })
       .then(data => {
-        console.log(data);
-        setPosts(data);
+        console.log('전체 데이터:', data);
+        // 절반만 표시 (100개 중 50개)
+        const halfPosts = data.slice(0, Math.floor(data.length / 2));
+        console.log('절반 데이터:', halfPosts);
+        setPosts(halfPosts);
         setLoading(false);
       })
       .catch(err => {
@@ -68,8 +71,8 @@ export default function PostsPage() {
         </div>
 
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">📝 Blog Posts</h1>
-          <p className="text-gray-600">JSONPlaceholder API에서 가져온 {posts.length}개의 포스트</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">📝 Blog Posts (절반만 표시)</h1>
+          <p className="text-gray-600">JSONPlaceholder API에서 가져온 {posts.length}개의 포스트 (전체 100개 중 절반)</p>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -103,6 +106,9 @@ export default function PostsPage() {
         <div className="text-center mt-12">
           <p className="text-gray-500 text-sm">
             데이터 출처: <a href="https://jsonplaceholder.typicode.com" className="text-blue-500 hover:underline">JSONPlaceholder</a>
+          </p>
+          <p className="text-gray-400 text-xs mt-2">
+            💡 전체 100개 중 처음 50개만 표시됩니다
           </p>
         </div>
       </div>
