@@ -5,6 +5,66 @@ import { sampleProducts } from '@/app/data/products';
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
+// 데스크톱용 카테고리 필터 컴포넌트
+function CategoryFilterDesktop({ categories, selectedCategory, onCategoryChange }) {
+  const [showAllCategories, setShowAllCategories] = useState(false);
+  
+  // 주요 카테고리 (자주 사용되는 카테고리들)
+  const mainCategories = ['전체', '디지털기기', '생활가전', '가구/인테리어', '생활/주방', '여성의류', '남성패션/잡화'];
+  const additionalCategories = categories.filter(cat => !mainCategories.includes(cat));
+  
+  const displayCategories = showAllCategories ? categories : mainCategories;
+  
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {displayCategories.map(category => (
+        <button
+          key={category}
+          onClick={() => onCategoryChange(category)}
+          className={`px-3 py-1 text-sm rounded-full whitespace-nowrap transition-all duration-200 ${
+            selectedCategory === category
+              ? 'bg-orange-500 text-white shadow-md transform scale-105'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:scale-102'
+          }`}
+        >
+          {category}
+        </button>
+      ))}
+      
+      {/* 더보기/접기 버튼 */}
+      {additionalCategories.length > 0 && (
+        <button
+          onClick={() => setShowAllCategories(!showAllCategories)}
+          className="flex items-center space-x-1 px-3 py-1 text-sm rounded-full bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-800 transition-all duration-200 border border-gray-200"
+        >
+          <span>{showAllCategories ? '접기' : `더보기 (+${additionalCategories.length})`}</span>
+          <svg 
+            className={`w-3 h-3 transition-transform duration-200 ${showAllCategories ? 'rotate-180' : ''}`} 
+            fill="none" 
+            stroke="currentColor" 
+            viewBox="0 0 24 24"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      )}
+      
+      {/* 선택된 카테고리가 추가 카테고리인 경우 표시 */}
+      {!mainCategories.includes(selectedCategory) && !showAllCategories && (
+        <div className="flex items-center space-x-2">
+          <div className="w-px h-4 bg-gray-300"></div>
+          <button
+            onClick={() => onCategoryChange(selectedCategory)}
+            className="px-3 py-1 text-sm rounded-full bg-orange-500 text-white shadow-md"
+          >
+            {selectedCategory}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ProductsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -272,31 +332,44 @@ export default function ProductsPage() {
       <div className="bg-white border-b">
         <div className="max-w-6xl mx-auto px-4 py-3">
           <div className="flex flex-wrap items-center gap-4">
-            {/* 카테고리 필터 */}
+            {/* 카테고리 필터 - 반응형 개선 */}
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium text-gray-700">카테고리:</span>
-              <div className="flex space-x-1 overflow-x-auto scrollbar-hide">
-                {categories.map(category => (
-                  <button
-                    key={category}
-                    onClick={() => {
-                      setSelectedCategory(category);
-                      // URL 업데이트
-                      const params = new URLSearchParams();
-                      if (category !== '전체') params.set('category', category);
-                      if (searchKeyword) params.set('keyword', searchKeyword);
-                      const newUrl = params.toString() ? `/products?${params.toString()}` : '/products';
-                      window.history.pushState({}, '', newUrl);
-                    }}
-                    className={`px-3 py-1 text-sm rounded-full whitespace-nowrap transition-all ${
-                      selectedCategory === category
-                        ? 'bg-orange-500 text-white shadow-md transform scale-105'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:scale-102'
-                    }`}
-                  >
-                    {category}
-                  </button>
-                ))}
+              
+              {/* 데스크톱: 주요 카테고리 + 더보기 */}
+              <div className="hidden md:flex items-center space-x-1">
+                <CategoryFilterDesktop 
+                  categories={categories}
+                  selectedCategory={selectedCategory}
+                  onCategoryChange={(category) => {
+                    setSelectedCategory(category);
+                    const params = new URLSearchParams();
+                    if (category !== '전체') params.set('category', category);
+                    if (searchKeyword) params.set('keyword', searchKeyword);
+                    const newUrl = params.toString() ? `/products?${params.toString()}` : '/products';
+                    window.history.pushState({}, '', newUrl);
+                  }}
+                />
+              </div>
+
+              {/* 모바일: 드롭다운 */}
+              <div className="md:hidden">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => {
+                    setSelectedCategory(e.target.value);
+                    const params = new URLSearchParams();
+                    if (e.target.value !== '전체') params.set('category', e.target.value);
+                    if (searchKeyword) params.set('keyword', searchKeyword);
+                    const newUrl = params.toString() ? `/products?${params.toString()}` : '/products';
+                    window.history.pushState({}, '', newUrl);
+                  }}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white min-w-[120px]"
+                >
+                  {categories.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
               </div>
             </div>
 

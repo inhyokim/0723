@@ -87,14 +87,26 @@ export default function Header({ title, showBackButton = false, customActions = 
                 )}
                 
                 <Link 
+                  href="/my-products"
+                  className={`text-gray-600 hover:text-orange-600 font-medium transition-colors hidden sm:inline-flex items-center space-x-1 ${
+                    pathname === '/my-products' ? 'text-orange-600' : ''
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                  </svg>
+                  <span>내 상품</span>
+                </Link>
+
+                <Link 
                   href="/sell"
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                    pathname === '/sell'
+                    pathname === '/sell' || pathname.startsWith('/sell/')
                       ? 'bg-orange-600 text-white'
                       : 'bg-orange-500 text-white hover:bg-orange-600'
                   }`}
                 >
-                  판매하기
+                  + 판매하기
                 </Link>
 
                 {/* 모바일 메뉴 버튼 */}
