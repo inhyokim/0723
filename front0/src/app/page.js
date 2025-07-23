@@ -18,6 +18,15 @@ export default function Home() {
           <br />
           
           <Link 
+            href="/async-demo" 
+            className="inline-block bg-purple-500 hover:bg-purple-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors shadow-md hover:shadow-lg"
+          >
+            ⚡ Async/Await Demo
+          </Link>
+          
+          <br />
+          
+          <Link 
             href="/about" 
             className="inline-block bg-gray-500 hover:bg-gray-600 text-white font-semibold px-6 py-3 rounded-lg transition-colors shadow-md hover:shadow-lg"
           >
@@ -26,7 +35,7 @@ export default function Home() {
         </div>
 
         <div className="mt-12 text-sm text-gray-500">
-          <p>JSONPlaceholder API를 활용한 데이터 페치 예제</p>
+          <p>JSONPlaceholder API와 내부 API를 활용한 데이터 페치 예제</p>
         </div>
       </div>
     </div>
