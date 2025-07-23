@@ -1,6 +1,6 @@
 'use client';
 import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Header from '@/app/components/Header';
 import MannerTemperature from '@/app/components/MannerTemperature';
 import { getProductById } from '@/app/data/products';
@@ -12,7 +12,120 @@ export default function ProductDetailPage() {
 
   const product = getProductById(productId);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  
+  // 좋아요 기능 개선
+  const [likes, setLikes] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
+  
+  // 댓글 기능
+  const [comment, setComment] = useState('');
+  const [comments, setComments] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // LocalStorage에서 데이터 로드
+  useEffect(() => {
+    if (!product) return;
+    
+    const savedLikes = localStorage.getItem(`likes_${productId}`);
+    const savedIsLiked = localStorage.getItem(`isLiked_${productId}`);
+    const savedComments = localStorage.getItem(`comments_${productId}`);
+    
+    if (savedLikes) setLikes(parseInt(savedLikes));
+    else setLikes(product.likes || 0);
+    
+    if (savedIsLiked) setIsLiked(JSON.parse(savedIsLiked));
+    if (savedComments) setComments(JSON.parse(savedComments));
+  }, [productId, product]);
+
+  // LocalStorage에 데이터 저장
+  useEffect(() => {
+    if (!product) return;
+    localStorage.setItem(`likes_${productId}`, likes.toString());
+    localStorage.setItem(`isLiked_${productId}`, JSON.stringify(isLiked));
+    localStorage.setItem(`comments_${productId}`, JSON.stringify(comments));
+  }, [likes, isLiked, comments, productId, product]);
+
+  // 좋아요 토글 함수
+  const toggleLike = () => {
+    if (isLiked) {
+      setLikes(prev => Math.max(0, prev - 1));
+      setIsLiked(false);
+    } else {
+      setLikes(prev => prev + 1);
+      setIsLiked(true);
+    }
+  };
+
+  // 댓글 추가 함수 (고도화)
+  const addComment = () => {
+    if (!comment.trim()) {
+      alert('댓글을 입력해주세요.');
+      return;
+    }
+    
+    if (comment.length > 500) {
+      alert('댓글은 500자까지 입력 가능합니다.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    // 실제 사용자 정보 (임시)
+    const newComment = {
+      id: Date.now(),
+      content: comment.trim(),
+      author: {
+        name: '김당근',
+        profileImage: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face',
+        rating: 37.2
+      },
+      createdAt: new Date().toISOString(),
+      likes: 0,
+      isLiked: false,
+      replies: []
+    };
+
+    setTimeout(() => {
+      setComments(prev => [newComment, ...prev]);
+      setComment('');
+      setIsSubmitting(false);
+    }, 300);
+  };
+
+  // 댓글 삭제 함수
+  const removeComment = (commentId) => {
+    if (confirm('댓글을 삭제하시겠습니까?')) {
+      setComments(prev => prev.filter(c => c.id !== commentId));
+    }
+  };
+
+  // 댓글 좋아요 토글
+  const toggleCommentLike = (commentId) => {
+    setComments(prev => 
+      prev.map(c => {
+        if (c.id === commentId) {
+          return {
+            ...c,
+            likes: c.isLiked ? c.likes - 1 : c.likes + 1,
+            isLiked: !c.isLiked
+          };
+        }
+        return c;
+      })
+    );
+  };
+
+  // 시간 포맷팅 함수
+  const formatTimeAgo = (dateString) => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffInSeconds = Math.floor((now - date) / 1000);
+    
+    if (diffInSeconds < 60) return '방금 전';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}분 전`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}시간 전`;
+    return `${Math.floor(diffInSeconds / 86400)}일 전`;
+  };
 
   // 카테고리 클릭 시 해당 카테고리로 필터링된 상품 페이지로 이동
   const handleCategoryClick = (category) => {
@@ -44,7 +157,7 @@ export default function ProductDetailPage() {
         </svg>
       </button>
       <button 
-        onClick={() => setIsLiked(!isLiked)}
+        onClick={toggleLike}
         className="p-2 hover:bg-gray-100 rounded-full transition-colors"
       >
         <svg className={`w-5 h-5 ${isLiked ? 'text-red-500 fill-current' : 'text-gray-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -192,10 +305,16 @@ export default function ProductDetailPage() {
               {/* 관심 표시 */}
               <div className="flex items-center space-x-4 text-sm text-gray-500 mb-6">
                 <div className="flex items-center space-x-1">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`w-4 h-4 ${isLiked ? 'text-red-500 fill-current' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                   </svg>
-                  <span>관심 {product.likes}</span>
+                  <span>관심 {likes}</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <span>댓글 {comments.length}</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -236,6 +355,105 @@ export default function ProductDetailPage() {
               </button>
             </div>
           </div>
+
+          {/* 댓글 섹션 */}
+          <div className="border-t p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-gray-900">
+                댓글 {comments.length}개
+              </h3>
+            </div>
+
+            {/* 댓글 입력 폼 */}
+            <div className="mb-6">
+              <div className="flex space-x-3">
+                <img 
+                  src="https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face"
+                  alt="내 프로필"
+                  className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                />
+                <div className="flex-1">
+                  <div className="relative">
+                    <textarea
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      placeholder="댓글을 남겨보세요..."
+                      className="w-full p-3 border border-gray-200 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                      rows="3"
+                      maxLength="500"
+                      disabled={isSubmitting}
+                    />
+                    <div className="absolute bottom-2 right-2 text-xs text-gray-400">
+                      {comment.length}/500
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center mt-2">
+                    <div className="text-xs text-gray-500">
+                      매너있는 댓글로 따뜻한 거래문화를 만들어요 🥕
+                    </div>
+                    <button
+                      onClick={addComment}
+                      disabled={isSubmitting || !comment.trim()}
+                      className="px-4 py-2 bg-orange-500 text-white text-sm font-medium rounded-lg hover:bg-orange-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {isSubmitting ? '등록중...' : '등록'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 댓글 목록 */}
+            <div className="space-y-4">
+              {comments.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                  </svg>
+                  <p>아직 댓글이 없어요</p>
+                  <p className="text-sm mt-1">첫 번째 댓글을 남겨보세요!</p>
+                </div>
+              ) : (
+                comments.map((c) => (
+                  <div key={c.id} className="flex space-x-3 p-4 bg-gray-50 rounded-lg">
+                    <img 
+                      src={c.author.profileImage}
+                      alt={c.author.name}
+                      className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <span className="font-medium text-gray-900">{c.author.name}</span>
+                        <MannerTemperature rating={c.author.rating} reviewCount={0} size="small" />
+                        <span className="text-xs text-gray-500">{formatTimeAgo(c.createdAt)}</span>
+                      </div>
+                      <p className="text-gray-700 mb-2 leading-relaxed">{c.content}</p>
+                      <div className="flex items-center space-x-4 text-sm">
+                        <button
+                          onClick={() => toggleCommentLike(c.id)}
+                          className={`flex items-center space-x-1 hover:text-red-500 transition-colors ${
+                            c.isLiked ? 'text-red-500' : 'text-gray-500'
+                          }`}
+                        >
+                          <svg className={`w-4 h-4 ${c.isLiked ? 'fill-current' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                          </svg>
+                          <span>{c.likes > 0 ? c.likes : '좋아요'}</span>
+                        </button>
+                        <button className="text-gray-500 hover:text-gray-700">답글</button>
+                        <button 
+                          onClick={() => removeComment(c.id)}
+                          className="text-gray-500 hover:text-red-500"
+                        >
+                          삭제
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -243,12 +461,21 @@ export default function ProductDetailPage() {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 z-20">
         <div className="max-w-4xl mx-auto flex items-center space-x-3">
           <button 
-            onClick={() => setIsLiked(!isLiked)}
-            className={`p-3 rounded-lg border transition-colors ${isLiked ? 'border-red-500 bg-red-50' : 'border-gray-300 bg-white hover:bg-gray-50'}`}
+            onClick={toggleLike}
+            className={`p-3 rounded-lg border transition-all duration-200 ${
+              isLiked 
+                ? 'border-red-500 bg-red-50 scale-110' 
+                : 'border-gray-300 bg-white hover:bg-gray-50 hover:scale-105'
+            }`}
           >
             <svg className={`w-6 h-6 ${isLiked ? 'text-red-500 fill-current' : 'text-gray-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
             </svg>
+            {likes > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full min-w-[18px] h-[18px] flex items-center justify-center">
+                {likes}
+              </span>
+            )}
           </button>
           <button className={`flex-1 text-white py-4 rounded-lg font-semibold text-lg transition-colors ${
             product.isFree 
