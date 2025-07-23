@@ -38,6 +38,19 @@ export default function Home() {
           <br />
           
           <Link 
+            href="/products" 
+            className="inline-block font-semibold px-6 py-3 rounded-lg shadow-md hover:shadow-lg text-white transition-all duration-200"
+            style={{ 
+              backgroundColor: '#10b981',
+              boxShadow: '0 4px 6px -1px var(--shadow-color)'
+            }}
+          >
+            🛍️ Products 보기
+          </Link>
+          
+          <br />
+          
+          <Link 
             href="/async-demo" 
             className="inline-block font-semibold px-6 py-3 rounded-lg shadow-md hover:shadow-lg text-white transition-all duration-200"
             style={{ 

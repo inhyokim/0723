@@ -43,14 +43,14 @@ export default function AboutPage() {
               href="/" 
               className="inline-block bg-green-500 hover:bg-green-600 dark:bg-green-600 dark:hover:bg-green-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors shadow-md hover:shadow-lg mr-4"
             >
-              🏠 홈으로 돌아가기
+              🏠 Home
             </Link>
             
             <Link 
               href="/posts" 
               className="inline-block bg-blue-500 hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition-colors shadow-md hover:shadow-lg"
             >
-              📝 Posts 보기
+              📝 Posts
             </Link>
           </div>
         </div>
