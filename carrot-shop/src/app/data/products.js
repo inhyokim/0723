@@ -22,6 +22,7 @@ export const sampleProducts = [
     category: '유아동',
     condition: 'good',
     seller: {
+      id: 201,
       name: '따뜻한엄마',
       profileImage: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100',
       rating: 4.9,
@@ -60,6 +61,7 @@ export const sampleProducts = [
     category: '식물',
     condition: 'good',
     seller: {
+      id: 202,
       name: '식물러버',
       profileImage: 'https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=100',
       rating: 4.8,
@@ -98,6 +100,7 @@ export const sampleProducts = [
     category: '도서',
     condition: 'good',
     seller: {
+      id: 203,
       name: '책벌레',
       profileImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100',
       rating: 4.7,
@@ -179,6 +182,7 @@ export const sampleProducts = [
     category: '디지털기기',
     condition: 'good',
     seller: {
+      id: 101,
       name: '당근이',
       profileImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
       rating: 4.8,
@@ -216,6 +220,7 @@ export const sampleProducts = [
     category: '디지털기기',
     condition: 'like-new',
     seller: {
+      id: 102,
       name: '개발자김',
       profileImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100',
       rating: 4.9,
@@ -1142,6 +1147,7 @@ export const sampleProducts = [
     category: '디지털기기',
     condition: 'like-new',
     seller: {
+      id: 128,
       name: '액션캠러',
       profileImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
       rating: 4.8,
@@ -1170,19 +1176,26 @@ export const generateProductDetail = (baseProduct) => {
     'damaged': '고장/파손'
   };
 
+  // seller id가 없으면 자동으로 추가 (기존 데이터 호환성을 위해)
+  const seller = baseProduct.seller ? {
+    ...baseProduct.seller,
+    id: baseProduct.seller.id || (200 + baseProduct.id) // id 없으면 자동 생성
+  } : {
+    id: 200 + baseProduct.id,
+    name: '판매자',
+    profileImage: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100',
+    rating: (Math.random() * 1 + 4).toFixed(1),
+    reviewCount: Math.floor(Math.random() * 30) + 5,
+    responseRate: '95%',
+    responseTime: '보통 1시간 이내'
+  };
+
   return {
     ...baseProduct,
     images: baseProduct.images || [baseProduct.image],
     views: baseProduct.views || Math.floor(Math.random() * 200) + 50,
     condition: baseProduct.condition || 'good',
-    seller: baseProduct.seller || {
-      name: '판매자',
-      profileImage: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100',
-      rating: (Math.random() * 1 + 4).toFixed(1),
-      reviewCount: Math.floor(Math.random() * 30) + 5,
-      responseRate: `${Math.floor(Math.random() * 20) + 80}%`,
-      responseTime: '보통 1-3시간 이내'
-    },
+    seller,
     specifications: baseProduct.specifications || [
       { label: '카테고리', value: baseProduct.category },
       { label: '상태', value: conditions[baseProduct.condition || 'good'] },

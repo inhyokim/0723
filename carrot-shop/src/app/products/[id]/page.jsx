@@ -22,7 +22,7 @@ export default function ProductDetailPage() {
   const [comments, setComments] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // LocalStorage에서 데이터 로드
+  // LocalStorage에서 데이터 로드 (초기 로드만)
   useEffect(() => {
     if (!product) return;
     
@@ -30,20 +30,29 @@ export default function ProductDetailPage() {
     const savedIsLiked = localStorage.getItem(`isLiked_${productId}`);
     const savedComments = localStorage.getItem(`comments_${productId}`);
     
-    if (savedLikes) setLikes(parseInt(savedLikes));
-    else setLikes(product.likes || 0);
+    if (savedLikes) {
+      setLikes(parseInt(savedLikes));
+    } else if (product.likes) {
+      setLikes(product.likes);
+    }
     
-    if (savedIsLiked) setIsLiked(JSON.parse(savedIsLiked));
-    if (savedComments) setComments(JSON.parse(savedComments));
-  }, [productId, product]);
+    if (savedIsLiked) {
+      setIsLiked(JSON.parse(savedIsLiked));
+    }
+    
+    if (savedComments) {
+      setComments(JSON.parse(savedComments));
+    }
+  }, [productId]); // product 제거하여 무한 루프 방지
 
-  // LocalStorage에 데이터 저장
+  // LocalStorage에 데이터 저장 (상태 변경시에만)
   useEffect(() => {
-    if (!product) return;
+    if (!product || likes === 0 && comments.length === 0 && !isLiked) return; // 초기 상태는 저장 안함
+    
     localStorage.setItem(`likes_${productId}`, likes.toString());
     localStorage.setItem(`isLiked_${productId}`, JSON.stringify(isLiked));
     localStorage.setItem(`comments_${productId}`, JSON.stringify(comments));
-  }, [likes, isLiked, comments, productId, product]);
+  }, [likes, isLiked, comments, productId]);
 
   // 좋아요 토글 함수
   const toggleLike = () => {
@@ -477,13 +486,19 @@ export default function ProductDetailPage() {
               </span>
             )}
           </button>
-          <button className={`flex-1 text-white py-4 rounded-lg font-semibold text-lg transition-colors ${
-            product.isFree 
-              ? 'bg-green-500 hover:bg-green-600' 
-              : product.acceptOffersOnly || product.price === null
-              ? 'bg-blue-500 hover:bg-blue-600'
-              : 'bg-orange-500 hover:bg-orange-600'
-          }`}>
+          <button 
+            onClick={() => {
+              const sellerId = product.seller?.id || (200 + productId);
+              router.push(`/chat/${productId}/${sellerId}`);
+            }}
+            className={`flex-1 text-white py-4 rounded-lg font-semibold text-lg transition-colors ${
+              product.isFree 
+                ? 'bg-green-500 hover:bg-green-600' 
+                : product.acceptOffersOnly || product.price === null
+                ? 'bg-blue-500 hover:bg-blue-600'
+                : 'bg-orange-500 hover:bg-orange-600'
+            }`}
+          >
             {product.isFree 
               ? '🥕 나눔 문의하기' 
               : product.acceptOffersOnly || product.price === null

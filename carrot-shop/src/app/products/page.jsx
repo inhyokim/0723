@@ -2,7 +2,7 @@
 import ProductCard from '@/app/components/productCard';
 import Header from '@/app/components/Header';
 import { sampleProducts } from '@/app/data/products';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
 export default function ProductsPage() {
@@ -25,11 +25,13 @@ export default function ProductsPage() {
     return [...userProducts, ...sampleProducts];
   }, [userProducts]);
 
-  // 🔍 검색 및 필터 상태 관리
-  const [keyword, setKeyword] = useState('');
+  // 🔍 검색 및 필터 상태 관리 - 개선된 버전
+  const [inputKeyword, setInputKeyword] = useState(''); // 입력창의 값
+  const [searchKeyword, setSearchKeyword] = useState(''); // 실제 검색에 사용되는 값
   const [selectedCategory, setSelectedCategory] = useState('전체');
   const [selectedStatus, setSelectedStatus] = useState('전체');
   const [sortBy, setSortBy] = useState('latest'); // latest, price-low, price-high, popular
+  const [isSearching, setIsSearching] = useState(false);
 
   // URL 쿼리 파라미터에서 초기값 설정
   useEffect(() => {
@@ -40,9 +42,50 @@ export default function ProductsPage() {
       setSelectedCategory(categoryParam);
     }
     if (keywordParam) {
-      setKeyword(keywordParam);
+      setInputKeyword(keywordParam);
+      setSearchKeyword(keywordParam);
     }
   }, [searchParams]);
+
+  // 검색 실행 함수
+  const executeSearch = useCallback((keyword = inputKeyword.trim()) => {
+    if (isSearching) return; // 이미 검색 중이면 무시
+    
+    setIsSearching(true);
+    setSearchKeyword(keyword);
+    
+    // URL 업데이트
+    const params = new URLSearchParams();
+    if (keyword) params.set('keyword', keyword);
+    if (selectedCategory !== '전체') params.set('category', selectedCategory);
+    const newUrl = params.toString() ? `/products?${params.toString()}` : '/products';
+    window.history.pushState({}, '', newUrl);
+    
+    // 검색 애니메이션을 위한 약간의 지연
+    setTimeout(() => {
+      setIsSearching(false);
+    }, 300);
+  }, [inputKeyword, selectedCategory, isSearching]);
+
+  // 검색어 초기화 함수
+  const clearSearch = () => {
+    setInputKeyword('');
+    setSearchKeyword('');
+    
+    // URL에서 keyword 제거
+    const params = new URLSearchParams();
+    if (selectedCategory !== '전체') params.set('category', selectedCategory);
+    const newUrl = params.toString() ? `/products?${params.toString()}` : '/products';
+    window.history.pushState({}, '', newUrl);
+  };
+
+  // 엔터키 처리
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      executeSearch();
+    }
+  };
 
   // 카테고리 목록 (모든 상품 카테고리 포함)
   const categories = [
@@ -53,17 +96,17 @@ export default function ProductsPage() {
   ];
   const statusOptions = ['전체', '판매중', '예약중', '완료'];
 
-  // 필터링 및 정렬된 상품 목록
+  // 필터링 및 정렬된 상품 목록 - searchKeyword 사용
   const filteredAndSortedProducts = useMemo(() => {
     let filtered = allProducts;
 
-    // 🔍 검색어 필터
-    if (keyword.trim()) {
+    // 🔍 검색어 필터 - 실제 검색된 키워드만 사용
+    if (searchKeyword.trim()) {
       filtered = filtered.filter(product =>
-        product.title.toLowerCase().includes(keyword.toLowerCase()) ||
-        product.desc.toLowerCase().includes(keyword.toLowerCase()) ||
-        product.category.toLowerCase().includes(keyword.toLowerCase()) ||
-        product.location.toLowerCase().includes(keyword.toLowerCase())
+        product.title.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+        product.desc.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+        product.category.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+        product.location.toLowerCase().includes(searchKeyword.toLowerCase())
       );
     }
 
@@ -96,7 +139,7 @@ export default function ProductsPage() {
     });
 
     return filtered;
-  }, [allProducts, keyword, selectedCategory, selectedStatus, sortBy, userProducts]);
+  }, [allProducts, searchKeyword, selectedCategory, selectedStatus, sortBy, userProducts]);
 
   // 페이지가 다시 로드될 때마다 사용자 상품 새로고침
   useEffect(() => {
@@ -136,7 +179,7 @@ export default function ProductsPage() {
       {/* 공통 헤더 사용 */}
       <Header customActions={customHeaderActions} />
 
-      {/* 🔍 검색창 */}
+      {/* 🔍 검색창 - 개선된 버전 */}
       <div className="bg-white border-b shadow-sm">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="relative max-w-md mx-auto">
@@ -148,40 +191,77 @@ export default function ProductsPage() {
             <input
               type="text"
               placeholder="상품명, 설명, 카테고리, 지역으로 검색하세요"
-              value={keyword}
-              onChange={(e) => {
-                setKeyword(e.target.value);
-                // URL 업데이트 (디바운싱 없이 즉시)
-                const params = new URLSearchParams();
-                if (e.target.value.trim()) params.set('keyword', e.target.value);
-                if (selectedCategory !== '전체') params.set('category', selectedCategory);
-                const newUrl = params.toString() ? `/products?${params.toString()}` : '/products';
-                window.history.pushState({}, '', newUrl);
-              }}
-              className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm"
+              value={inputKeyword}
+              onChange={(e) => setInputKeyword(e.target.value)}
+              onKeyPress={handleKeyPress}
+              className="block w-full pl-10 pr-20 py-3 border border-gray-300 rounded-lg leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-sm transition-all duration-200"
             />
-            {keyword && (
+            
+            {/* 검색 버튼과 클리어 버튼 */}
+            <div className="absolute inset-y-0 right-0 flex items-center">
+              {inputKeyword && (
+                <button
+                  onClick={clearSearch}
+                  className="p-2 text-gray-400 hover:text-gray-600 transition-colors"
+                  title="검색어 지우기"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+              
               <button
-                onClick={() => {
-                  setKeyword('');
-                  // URL에서 keyword 제거
-                  const params = new URLSearchParams();
-                  if (selectedCategory !== '전체') params.set('category', selectedCategory);
-                  const newUrl = params.toString() ? `/products?${params.toString()}` : '/products';
-                  window.history.pushState({}, '', newUrl);
-                }}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                onClick={() => executeSearch()}
+                disabled={isSearching}
+                className={`mr-2 px-4 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                  inputKeyword.trim()
+                    ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-md hover:shadow-lg transform hover:scale-105'
+                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                } ${isSearching ? 'animate-pulse' : ''}`}
+                title="검색하기 (Enter)"
               >
-                <svg className="h-5 w-5 text-gray-400 hover:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
+                {isSearching ? (
+                  <div className="flex items-center space-x-1">
+                    <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>검색중</span>
+                  </div>
+                ) : (
+                  '검색'
+                )}
               </button>
-            )}
+            </div>
           </div>
-          {keyword && (
+          
+          {/* 검색 결과 표시 - 실제 검색된 키워드만 표시 */}
+          {searchKeyword && (
+            <div className="text-center mt-3">
+              <div className="inline-flex items-center space-x-2 px-4 py-2 bg-orange-50 rounded-full">
+                <svg className="w-4 h-4 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <span className="text-sm text-gray-700">
+                  '<span className="font-medium text-orange-600">{searchKeyword}</span>' 검색결과 
+                  <span className="font-semibold text-orange-700">{filteredAndSortedProducts.length}개</span>
+                </span>
+                <button
+                  onClick={clearSearch}
+                  className="text-orange-500 hover:text-orange-700 transition-colors"
+                  title="검색 초기화"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
+          
+          {/* 검색어 힌트 */}
+          {!searchKeyword && inputKeyword.trim() && (
             <div className="text-center mt-2">
-              <span className="text-sm text-gray-600">
-                '<span className="font-medium text-orange-600">{keyword}</span>' 검색결과 {filteredAndSortedProducts.length}개
+              <span className="text-xs text-gray-500">
+                💡 Enter키를 누르거나 검색 버튼을 클릭해주세요
               </span>
             </div>
           )}
@@ -195,7 +275,7 @@ export default function ProductsPage() {
             {/* 카테고리 필터 */}
             <div className="flex items-center space-x-2">
               <span className="text-sm font-medium text-gray-700">카테고리:</span>
-              <div className="flex space-x-1">
+              <div className="flex space-x-1 overflow-x-auto scrollbar-hide">
                 {categories.map(category => (
                   <button
                     key={category}
@@ -204,14 +284,14 @@ export default function ProductsPage() {
                       // URL 업데이트
                       const params = new URLSearchParams();
                       if (category !== '전체') params.set('category', category);
-                      if (keyword) params.set('keyword', keyword);
+                      if (searchKeyword) params.set('keyword', searchKeyword);
                       const newUrl = params.toString() ? `/products?${params.toString()}` : '/products';
                       window.history.pushState({}, '', newUrl);
                     }}
-                    className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                    className={`px-3 py-1 text-sm rounded-full whitespace-nowrap transition-all ${
                       selectedCategory === category
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-orange-500 text-white shadow-md transform scale-105'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:scale-102'
                     }`}
                   >
                     {category}
@@ -228,9 +308,9 @@ export default function ProductsPage() {
                   <button
                     key={status}
                     onClick={() => setSelectedStatus(status)}
-                    className={`px-3 py-1 text-sm rounded-full transition-colors ${
+                    className={`px-3 py-1 text-sm rounded-full transition-all ${
                       selectedStatus === status
-                        ? 'bg-orange-500 text-white'
+                        ? 'bg-orange-500 text-white shadow-md'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
@@ -246,7 +326,7 @@ export default function ProductsPage() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="px-3 py-1 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all"
               >
                 <option value="latest">최신순</option>
                 <option value="price-low">가격 낮은순</option>
@@ -260,15 +340,39 @@ export default function ProductsPage() {
 
       {/* 상품 그리드 */}
       <main className="max-w-6xl mx-auto px-4 py-6">
-        {filteredAndSortedProducts.length === 0 ? (
-          <div className="text-center py-12">
+        {isSearching ? (
+          // 검색 중 로딩 상태
+          <div className="flex justify-center items-center py-20">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-4 border-orange-200 border-t-orange-500 mx-auto mb-4"></div>
+              <p className="text-gray-600 font-medium">검색 중...</p>
+              <p className="text-gray-500 text-sm">잠시만 기다려주세요</p>
+            </div>
+          </div>
+        ) : filteredAndSortedProducts.length === 0 ? (
+          <div className="text-center py-16">
             <div className="text-gray-400 mb-4">
-              <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2 2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+              <svg className="w-20 h-20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">상품이 없습니다</h3>
-            <p className="text-gray-500">다른 조건으로 검색해보세요.</p>
+            <h3 className="text-xl font-medium text-gray-900 mb-2">
+              {searchKeyword ? '검색 결과가 없습니다' : '상품이 없습니다'}
+            </h3>
+            <p className="text-gray-500 mb-6">
+              {searchKeyword 
+                ? `'${searchKeyword}'에 대한 검색 결과를 찾을 수 없어요`
+                : '다른 조건으로 검색해보세요'
+              }
+            </p>
+            {searchKeyword && (
+              <button
+                onClick={clearSearch}
+                className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 transition-colors"
+              >
+                전체 상품 보기
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -276,7 +380,7 @@ export default function ProductsPage() {
               <div key={product.id} className="relative">
                 {userProducts.some(p => p.id === product.id) && (
                   <div className="absolute -top-2 -right-2 z-10">
-                    <span className="bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-medium">
+                    <span className="bg-orange-500 text-white text-xs px-2 py-1 rounded-full font-medium shadow-lg">
                       내 상품
                     </span>
                   </div>
