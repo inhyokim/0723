@@ -141,7 +141,11 @@ export default function ProductCard({ product, compact = false }) {
                   <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   </svg>
-                  <span className="truncate">{typeof product.location === 'object' ? product.location.name : product.location}</span>
+                  <span className="truncate">{
+                    product.location && typeof product.location === 'object' 
+                      ? product.location.name || '위치 정보 없음'
+                      : product.location || '위치 정보 없음'
+                  }</span>
                 </div>
                 
                 <div className="flex items-center space-x-2 flex-shrink-0">
@@ -249,7 +253,11 @@ export default function ProductCard({ product, compact = false }) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              <span className="truncate">{typeof product.location === 'object' ? product.location.name : product.location}</span>
+              <span className="truncate">{
+                product.location && typeof product.location === 'object' 
+                  ? product.location.name || '위치 정보 없음'
+                  : product.location || '위치 정보 없음'
+              }</span>
             </div>
             
             <div className="flex items-center space-x-3 text-gray-500">

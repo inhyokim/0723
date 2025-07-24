@@ -217,9 +217,53 @@ export default function SellPage() {
         }
       }
 
-      // 성공 메시지 표시 후 상품 페이지로 이동
-      alert('상품이 성공적으로 등록되었습니다!');
-      router.push(`/products/${createdProduct.id}`); // 등록한 상품 상세 페이지로 이동
+      // 성공 메시지와 선택지 제공
+      const showSuccessOptions = () => {
+        return new Promise((resolve) => {
+          const modal = document.createElement('div');
+          modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+          modal.innerHTML = `
+            <div class="bg-white rounded-xl p-8 max-w-sm mx-4 text-center">
+              <div class="text-6xl mb-4">🎉</div>
+              <h3 class="text-xl font-bold text-gray-900 mb-2">상품 등록 완료!</h3>
+              <p class="text-gray-600 mb-6">성공적으로 등록되었습니다</p>
+              <div class="space-y-3">
+                <button id="viewProduct" class="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 px-4 rounded-lg font-semibold transition-colors">
+                  등록한 상품 보기
+                </button>
+                <button id="goHome" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-lg font-semibold transition-colors">
+                  메인으로 가기
+                </button>
+              </div>
+            </div>
+          `;
+          
+          document.body.appendChild(modal);
+          
+          document.getElementById('viewProduct').onclick = () => {
+            document.body.removeChild(modal);
+            resolve('view');
+          };
+          
+          document.getElementById('goHome').onclick = () => {
+            document.body.removeChild(modal);
+            resolve('home');
+          };
+        });
+      };
+      
+      const choice = await showSuccessOptions();
+      
+      if (choice === 'view') {
+        // 등록한 상품 상세 페이지로 이동
+        router.push(`/products/${createdProduct.id}`);
+      } else {
+        // 메인 페이지로 이동 (새 데이터 로딩을 위해 refresh)
+        router.push('/');
+        setTimeout(() => {
+          window.location.reload();
+        }, 100);
+      }
 
     } catch (error) {
       alert('상품 등록 중 오류가 발생했습니다: ' + error.message);

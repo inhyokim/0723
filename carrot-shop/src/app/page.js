@@ -9,10 +9,10 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   // 최신 상품 로드
-  useEffect(() => {
-    const loadRecentProducts = async () => {
-      try {
-        const data = await supabaseUtils.products.getAllWithSeller();
+  const loadRecentProducts = async () => {
+    try {
+      setLoading(true);
+      const data = await supabaseUtils.products.getAllWithSeller();
         
         // 최신 6개 상품만 가져오기
         const recentData = data.slice(0, 6).map(product => ({
@@ -44,7 +44,17 @@ export default function Home() {
       }
     };
 
+  // 컴포넌트 마운트 시 & 페이지 포커스 시 데이터 로드
+  useEffect(() => {
     loadRecentProducts();
+
+    // 페이지 포커스 시 데이터 새로고침
+    const handleFocus = () => {
+      loadRecentProducts();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, []);
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100">

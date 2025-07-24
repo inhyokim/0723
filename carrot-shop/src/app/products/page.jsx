@@ -174,6 +174,14 @@ function ProductsContent() {
 
   useEffect(() => {
     loadProducts();
+    
+    // 페이지 포커스 시 데이터 새로고침
+    const handleFocus = () => {
+      loadProducts();
+    };
+
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
   }, [loadProducts]);
 
   // 검색 실행 함수
@@ -237,11 +245,15 @@ function ProductsContent() {
     // 검색어 필터링
     if (searchKeyword) {
       const keyword = searchKeyword.toLowerCase();
-      filtered = filtered.filter(product =>
-        product.title.toLowerCase().includes(keyword) ||
-        (product.desc && product.desc.toLowerCase().includes(keyword)) ||
-        (product.location && product.location.toLowerCase().includes(keyword))
-      );
+      filtered = filtered.filter(product => {
+        const locationText = product.location && typeof product.location === 'object' 
+          ? product.location.name || ''
+          : product.location || '';
+        
+        return product.title.toLowerCase().includes(keyword) ||
+          (product.desc && product.desc.toLowerCase().includes(keyword)) ||
+          locationText.toLowerCase().includes(keyword);
+      });
     }
 
     // 정렬

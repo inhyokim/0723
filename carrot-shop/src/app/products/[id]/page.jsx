@@ -634,7 +634,16 @@ export default function ProductDetailPage() {
 
       {/* 하단 고정 버튼 */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t p-4 z-20">
-        <div className="max-w-4xl mx-auto flex items-center space-x-3">
+        <div className="max-w-4xl mx-auto flex items-center space-x-2">
+          <button 
+            onClick={() => router.push('/')}
+            className="p-3 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 hover:scale-105 transition-all duration-200"
+            title="메인으로 가기"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+          </button>
           <button 
             onClick={toggleLike}
             className={`p-3 rounded-lg border transition-all duration-200 ${
