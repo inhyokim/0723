@@ -199,6 +199,11 @@ export default function SellPage() {
 
       // Supabase에 상품 등록
       const createdProduct = await supabaseUtils.products.create(productData);
+      console.log('상품 생성 성공:', createdProduct);
+      
+      // 메인 페이지 새로고침을 위한 플래그 설정
+      localStorage.setItem('newProductAdded', 'true');
+      localStorage.setItem('newProductId', createdProduct.id.toString());
       
       // 여러 이미지가 있다면 product_images 테이블에 추가
       const validImages = images.filter(img => img.trim());
@@ -258,11 +263,10 @@ export default function SellPage() {
         // 등록한 상품 상세 페이지로 이동
         router.push(`/products/${createdProduct.id}`);
       } else {
-        // 메인 페이지로 이동 (새 데이터 로딩을 위해 refresh)
-        router.push('/');
-        setTimeout(() => {
-          window.location.reload();
-        }, 100);
+        // 메인 페이지로 이동 (타임스탬프를 추가해서 새로고침 보장)
+        const timestamp = Date.now();
+        router.push(`/?refresh=${timestamp}`);
+        // 메인 페이지가 로드되면 플래그를 감지해서 자동으로 새로고침됨
       }
 
     } catch (error) {

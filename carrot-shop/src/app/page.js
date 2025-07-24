@@ -1,17 +1,20 @@
 'use client';
 import Link from "next/link";
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { supabaseUtils } from '@/lib/supabase';
 import ProductCard from './components/productCard';
 
 export default function Home() {
   const [recentProducts, setRecentProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const searchParams = useSearchParams();
 
   // 최신 상품 로드
   const loadRecentProducts = async () => {
     try {
       setLoading(true);
+      console.log('메인 페이지: 최신 상품 로딩 시작', new Date().toISOString());
       const data = await supabaseUtils.products.getAllWithSeller();
         
         // 최신 6개 상품만 가져오기
@@ -36,6 +39,7 @@ export default function Home() {
           }
         }));
         
+        console.log(`메인 페이지: ${data.length}개 상품 로딩 완료, 최신 6개 표시:`, recentData.map(p => ({ id: p.id, title: p.title, created_at: p.created_at })));
         setRecentProducts(recentData);
       } catch (error) {
         console.error('상품 로딩 오류:', error);
@@ -46,6 +50,16 @@ export default function Home() {
 
   // 컴포넌트 마운트 시 & 페이지 포커스 시 데이터 로드
   useEffect(() => {
+    // URL에 refresh 파라미터가 있으면 즉시 새로고침
+    const refreshParam = searchParams.get('refresh');
+    if (refreshParam) {
+      console.log('URL refresh 파라미터 감지, 즉시 데이터 새로고침');
+      loadRecentProducts();
+      // URL 정리 (브라우저 히스토리는 유지)
+      window.history.replaceState({}, '', '/');
+      return;
+    }
+
     loadRecentProducts();
 
     // 페이지 포커스 시 데이터 새로고침
@@ -53,9 +67,29 @@ export default function Home() {
       loadRecentProducts();
     };
 
+    // 상품 등록 완료 플래그 체크
+    const checkNewProduct = () => {
+      const hasNewProduct = localStorage.getItem('newProductAdded');
+      if (hasNewProduct) {
+        console.log('새 상품 등록 감지, 데이터 새로고침');
+        loadRecentProducts();
+        localStorage.removeItem('newProductAdded');
+      }
+    };
+
+    // 페이지 로드 시 즉시 체크
+    checkNewProduct();
+    
+    // 주기적 체크 (3초마다)
+    const intervalCheck = setInterval(checkNewProduct, 3000);
+
     window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, []);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(intervalCheck);
+    };
+  }, [searchParams]);
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100">
       {/* 헤더 */}
@@ -196,7 +230,23 @@ export default function Home() {
         {/* 최신 상품 섹션 */}
         <div className="mb-16">
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">🔥 최신 등록 상품</h2>
+            <div className="flex items-center justify-center gap-4 mb-4">
+              <h2 className="text-3xl font-bold text-gray-900">🔥 최신 등록 상품</h2>
+              <button
+                onClick={loadRecentProducts}
+                disabled={loading}
+                className={`p-2 rounded-lg transition-all ${
+                  loading 
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed animate-spin' 
+                    : 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                }`}
+                title="새로고침"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+            </div>
             <p className="text-gray-600 max-w-2xl mx-auto">
               지금 막 등록된 따끈따끈한 상품들을 확인해보세요
             </p>
