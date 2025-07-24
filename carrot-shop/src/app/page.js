@@ -16,31 +16,76 @@ export default function Home() {
       setLoading(true);
       console.log('메인 페이지: 최신 상품 로딩 시작', new Date().toISOString());
       const data = await supabaseUtils.products.getAllWithSeller();
+      
+      console.log('🔍 메인 페이지: 원본 데이터 확인', {
+        isArray: Array.isArray(data),
+        length: data?.length || 0,
+        firstItem: data?.[0] || null
+      });
+        
+      if (!Array.isArray(data)) {
+        console.error('❌ 메인 페이지: data가 배열이 아님!', typeof data, data);
+        setRecentProducts([]);
+        return;
+      }
         
         // 최신 6개 상품만 가져오기
         const recentData = data.slice(0, 6).map(product => ({
           ...product,
-          desc: product.description,
-          image: product.main_image,
+          desc: product.description || '상품 설명이 없습니다',
+          image: product.main_image || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=300&fit=crop',
           images: product.product_images && product.product_images.length > 0 
             ? product.product_images
                 .sort((a, b) => a.sort_order - b.sort_order)
                 .map(img => img.image_url)
-            : product.main_image ? [product.main_image] : [],
+            : product.main_image ? [product.main_image] : ['https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=300&fit=crop'],
           createdAt: new Date(product.created_at).toLocaleDateString(),
-          seller: {
-            id: product.seller_id,
+          
+          // ProductCard가 기대하는 모든 필드들 안전하게 설정
+          title: product.title || '제목 없음',
+          price: product.is_free ? 0 : (product.price || 0),
+          originalPrice: product.original_price || null,
+          isFree: product.is_free || false,
+          acceptOffersOnly: product.accept_offers_only || false,
+          negotiable: product.is_negotiable || false,
+          status: product.status || '판매중',
+          category: product.category || '기타',
+          condition: product.condition || '사용감 있음',
+          location: product.location || '위치 정보 없음',
+          likes: product.likes || 0,
+          chats: product.chats || 0,
+          views: product.views || 0,
+          
+          seller: product.user_profiles ? {
+            id: product.user_profiles.id,
+            name: product.user_profiles.name || '판매자',
+            profileImage: product.user_profiles.profile_image || 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100',
+            rating: product.user_profiles.rating || 4.5,
+            reviewCount: product.user_profiles.review_count || 0,
+            responseRate: product.user_profiles.response_rate || '95%',
+            responseTime: product.user_profiles.response_time || '보통 1시간 이내'
+          } : {
+            id: product.seller_id || 'unknown',
             name: '판매자',
             profileImage: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100',
             rating: 4.5,
-            reviewCount: 10,
+            reviewCount: 0,
             responseRate: '95%',
             responseTime: '보통 1시간 이내'
           }
         }));
         
         console.log(`메인 페이지: ${data.length}개 상품 로딩 완료, 최신 6개 표시:`, recentData.map(p => ({ id: p.id, title: p.title, created_at: p.created_at })));
+        
+        console.log('🎯 메인 페이지: recentProducts 설정 전', { 
+          currentLength: recentProducts.length,
+          newLength: recentData.length,
+          loading: loading
+        });
+        
         setRecentProducts(recentData);
+        
+        console.log('✅ 메인 페이지: recentProducts 설정 완료');
       } catch (error) {
         console.error('상품 로딩 오류:', error);
       } finally {
@@ -157,7 +202,7 @@ export default function Home() {
             <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 616 0z" />
               </svg>
             </div>
             <h3 className="text-xl font-semibold mb-2">우리 동네 거래</h3>
@@ -172,7 +217,7 @@ export default function Home() {
               </svg>
             </div>
             <h3 className="text-xl font-semibold mb-2 text-blue-800">지도로 찾기</h3>
-            <p className="text-gray-600">내 위치 근처 상품을 지도에서 한눈에 확인하세요.</p>
+            <p className="text-blue-600">지도에서 우리 동네 상품들을 한눈에 확인하세요.</p>
           </Link>
 
           <div className="text-center p-6 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
@@ -251,10 +296,10 @@ export default function Home() {
               지금 막 등록된 따끈따끈한 상품들을 확인해보세요
             </p>
           </div>
-          
+
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
+              {[1, 2, 3, 4, 5, 6].map((i) => (
                 <div key={i} className="bg-white rounded-xl shadow-sm animate-pulse">
                   <div className="h-48 bg-gray-200 rounded-t-xl"></div>
                   <div className="p-4 space-y-3">
@@ -267,10 +312,37 @@ export default function Home() {
             </div>
           ) : recentProducts.length > 0 ? (
             <>
+              {console.log('🎨 메인 페이지: 상품 렌더링 시작', { count: recentProducts.length, products: recentProducts.map(p => p.title) })}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {recentProducts.map(product => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
+                {recentProducts.map(product => {
+                  console.log('🔧 ProductCard 렌더링:', { id: product.id, title: product.title });
+                  // 임시로 간단한 div로 렌더링해서 문제 진단
+                  return (
+                    <div key={product.id} className="bg-white rounded-lg shadow-md p-4 border">
+                      <div className="mb-3">
+                        <img 
+                          src={product.image} 
+                          alt={product.title}
+                          className="w-full h-48 object-cover rounded"
+                          onError={(e) => {
+                            e.target.src = 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=300&fit=crop';
+                          }}
+                        />
+                      </div>
+                      <h3 className="font-semibold text-lg mb-2">{product.title}</h3>
+                      <p className="text-gray-600 text-sm mb-2">{product.desc}</p>
+                      <div className="flex justify-between items-center">
+                        <span className="text-orange-600 font-bold">
+                          {product.isFree ? '무료 나눔' : `${(product.price || 0).toLocaleString()}원`}
+                        </span>
+                        <span className="text-gray-500 text-sm">{product.location}</span>
+                      </div>
+                      <div className="mt-2 text-sm text-gray-500">
+                        ❤️ {product.likes} | 💬 {product.chats}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
               <div className="text-center mt-8">
                 <Link 
@@ -283,6 +355,7 @@ export default function Home() {
             </>
           ) : (
             <div className="text-center py-16">
+              {console.log('📭 메인 페이지: 빈 상태 렌더링', { loading, recentProductsLength: recentProducts.length })}
               <div className="text-gray-400 mb-4">
                 <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m8-8h4m-4 8h4" />
@@ -308,52 +381,14 @@ export default function Home() {
           <p className="text-gray-600 mb-6">
             우리 동네 이웃들과 따뜻한 거래를 경험해보세요.
           </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link 
-              href="/products"
-              className="w-full sm:w-auto inline-block bg-orange-500 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-orange-600 transition-colors shadow-lg"
-            >
-              당근샵 둘러보기
-            </Link>
-            <Link 
-              href="/map"
-              className="w-full sm:w-auto inline-block bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all shadow-lg"
-            >
-              🗺️ 지도에서 찾기
-            </Link>
-            <Link 
-              href="/sell"
-              className="w-full sm:w-auto inline-block border-2 border-orange-500 text-orange-500 px-8 py-3 rounded-lg text-lg font-semibold hover:bg-orange-50 transition-colors"
-            >
-              상품 판매하기
-            </Link>
-          </div>
+          <Link 
+            href="/sell"
+            className="inline-block bg-orange-500 text-white px-8 py-4 rounded-xl text-lg font-semibold hover:bg-orange-600 transition-colors shadow-lg"
+          >
+            지금 판매 시작하기
+          </Link>
         </div>
       </main>
-
-      {/* 푸터 */}
-      <footer className="bg-gray-900 text-white py-8 mt-16">
-        <div className="max-w-6xl mx-auto px-4 text-center">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            <div className="w-6 h-6 bg-orange-500 rounded flex items-center justify-center">
-              <span className="text-white text-sm">🥕</span>
-            </div>
-            <span className="text-xl font-bold">당근샵</span>
-          </div>
-          <p className="text-gray-400">우리 동네 중고거래의 새로운 경험</p>
-          <div className="flex items-center justify-center space-x-6 mt-4 text-sm">
-            <Link href="/products" className="text-gray-400 hover:text-white transition-colors">
-              중고거래
-            </Link>
-            <Link href="/map" className="text-gray-400 hover:text-white transition-colors">
-              지도에서 찾기
-            </Link>
-            <Link href="/sell" className="text-gray-400 hover:text-white transition-colors">
-              판매하기
-            </Link>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }
