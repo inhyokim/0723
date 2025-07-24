@@ -1,7 +1,7 @@
 'use client';
 import ProductCard from '@/app/components/productCard';
 import Header from '@/app/components/Header';
-import { sampleProducts } from '@/app/data/products';
+import { supabaseUtils } from '@/lib/supabase';
 import { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 
@@ -111,6 +111,70 @@ function ProductsContent() {
   const [searchKeyword, setSearchKeyword] = useState(initialKeyword); // 실제 검색 상태
   const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [sortBy, setSortBy] = useState('latest');
+  
+  // Supabase 상태 관리
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Supabase에서 상품 데이터 로드
+  const loadProducts = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // 판매자 정보와 함께 조회 시도
+      let data;
+      try {
+        data = await supabaseUtils.products.getAllWithSeller();
+      } catch (joinError) {
+        console.warn('조인 쿼리 실패, 기본 쿼리로 대체:', joinError);
+        // 조인 쿼리 실패 시 기본 쿼리로 대체
+        data = await supabaseUtils.products.getAll();
+      }
+      
+              // 데이터 변환 (기존 구조와 호환되도록)
+        const transformedData = data.map(product => ({
+          ...product,
+          desc: product.description, // description -> desc로 변환
+          image: product.main_image,  // main_image -> image로 변환
+          images: product.product_images && product.product_images.length > 0 
+            ? product.product_images
+                .sort((a, b) => a.sort_order - b.sort_order)
+                .map(img => img.image_url)
+            : product.main_image ? [product.main_image] : [],
+          createdAt: new Date(product.created_at).toLocaleDateString(),
+        seller: product.user_profiles ? {
+          id: product.user_profiles.id,
+          name: product.user_profiles.name,
+          profileImage: product.user_profiles.profile_image,
+          rating: product.user_profiles.rating || 4.5,
+          reviewCount: product.user_profiles.review_count || 0,
+          responseRate: product.user_profiles.response_rate || '95%',
+          responseTime: product.user_profiles.response_time || '보통 1시간 이내'
+        } : {
+          id: product.seller_id,
+          name: '판매자',
+          profileImage: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100',
+          rating: 4.5,
+          reviewCount: 0,
+          responseRate: '95%',
+          responseTime: '보통 1시간 이내'
+        }
+      }));
+      
+      setProducts(transformedData);
+    } catch (err) {
+      setError(err.message);
+      console.error('상품 로딩 오류:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
 
   // 검색 실행 함수
   const executeSearch = useCallback(() => {
@@ -157,13 +221,13 @@ function ProductsContent() {
 
   // 카테고리 목록 생성
   const categories = useMemo(() => {
-    const uniqueCategories = ['전체', ...new Set(sampleProducts.map(product => product.category))];
+    const uniqueCategories = ['전체', ...new Set(products.map(product => product.category))];
     return uniqueCategories;
-  }, []);
+  }, [products]);
 
   // 필터링된 상품 목록
   const filteredProducts = useMemo(() => {
-    let filtered = sampleProducts;
+    let filtered = products;
 
     // 카테고리 필터링
     if (selectedCategory !== '전체') {
@@ -175,10 +239,8 @@ function ProductsContent() {
       const keyword = searchKeyword.toLowerCase();
       filtered = filtered.filter(product =>
         product.title.toLowerCase().includes(keyword) ||
-        product.desc.toLowerCase().includes(keyword) ||
-        (typeof product.location === 'string' 
-          ? product.location.toLowerCase().includes(keyword)
-          : product.location.name.toLowerCase().includes(keyword))
+        (product.desc && product.desc.toLowerCase().includes(keyword)) ||
+        (product.location && product.location.toLowerCase().includes(keyword))
       );
     }
 
@@ -195,6 +257,37 @@ function ProductsContent() {
         return filtered;
     }
   }, [searchKeyword, selectedCategory, sortBy]);
+
+  // 로딩 상태 처리
+  if (loading) {
+    return <ProductsLoading />;
+  }
+
+  // 에러 상태 처리
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <main className="max-w-6xl mx-auto px-4 py-6">
+          <div className="text-center py-16">
+            <div className="text-red-400 mb-4">
+              <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">데이터 로딩 오류</h3>
+            <p className="text-gray-500 mb-4">{error}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
+            >
+              새로고침
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -253,6 +346,16 @@ function ProductsContent() {
             총 <span className="font-semibold text-orange-600">{filteredProducts.length}</span>개의 상품
           </div>
           <div className="flex items-center space-x-2">
+            <button
+              onClick={loadProducts}
+              className="flex items-center space-x-1 px-3 py-1 text-sm text-gray-600 hover:text-gray-800 transition-colors"
+              title="새로고침"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              <span>새로고침</span>
+            </button>
             <span className="text-sm text-gray-500">정렬:</span>
             <select
               value={sortBy}

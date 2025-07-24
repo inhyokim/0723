@@ -3,6 +3,7 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import ProductCard from '@/app/components/productCard';
 import Header from '@/app/components/Header';
+import { supabaseUtils } from '@/lib/supabase';
 
 export default function SellPage() {
   const router = useRouter();
@@ -165,52 +166,64 @@ export default function SellPage() {
     try {
       const finalPrice = isFree ? 0 : (acceptOffersOnly ? null : Number(price));
       
-      const newProduct = {
-        id: Date.now(),
+      // 가격 검증 (Supabase NUMERIC(10,2) 제한)
+      if (!isFree && !acceptOffersOnly && finalPrice > 99999999.99) {
+        setError('가격은 9999만원(99,999,999원)을 초과할 수 없습니다.');
+        setIsSubmitting(false);
+        return;
+      }
+      if (!isFree && !acceptOffersOnly && finalPrice < 0) {
+        setError('가격은 0원 이상이어야 합니다.');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      // Supabase 데이터베이스 구조에 맞게 데이터 준비
+      const productData = {
         title: title.trim(),
-        desc: desc.trim(),
+        description: desc.trim(),
         price: finalPrice,
-        originalPrice: originalPrice ? Number(originalPrice) : undefined,
-        image: images[0], // 첫 번째 이미지를 메인으로
-        images: images.filter(img => img.trim()),
+        original_price: originalPrice && Number(originalPrice) <= 99999999.99 ? Number(originalPrice) : null,
+        main_image: images[0] || null, // 첫 번째 이미지를 메인으로
         category,
         status: '판매중',
         location,
-        createdAt: '방금 전',
+        condition,
+        is_free: isFree,
+        accept_offers_only: acceptOffersOnly,
         likes: 0,
         chats: 0,
         views: 0,
-        condition,
-        negotiable,
-        isFree,
-        acceptOffersOnly,
-        seller: {
-          name: '나',
-          profileImage: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100',
-          rating: 4.8,
-          reviewCount: 15,
-          responseRate: '95%',
-          responseTime: '보통 1시간 이내'
-        },
-        specifications: [
-          { label: '카테고리', value: category },
-          { label: '상태', value: conditions.find(c => c.value === condition)?.label },
-          { label: '거래방식', value: isFree ? '나눔' : acceptOffersOnly ? '가격제안만' : negotiable ? '가격제안 가능' : '정가거래만' }
-        ]
+        seller_id: '550e8400-e29b-41d4-a716-446655440000' // 고정된 테스트 사용자 ID
       };
 
-      // LocalStorage에 저장 (실제로는 API 호출)
-      const existingProducts = JSON.parse(localStorage.getItem('userProducts') || '[]');
-      existingProducts.unshift(newProduct);
-      localStorage.setItem('userProducts', JSON.stringify(existingProducts));
+      // Supabase에 상품 등록
+      const createdProduct = await supabaseUtils.products.create(productData);
+      
+      // 여러 이미지가 있다면 product_images 테이블에 추가
+      const validImages = images.filter(img => img.trim());
+      if (validImages.length > 0) {
+        try {
+          const imageData = validImages.map((imageUrl, index) => ({
+            product_id: createdProduct.id,
+            image_url: imageUrl,
+            sort_order: index
+          }));
+          
+          await supabaseUtils.productImages.create(imageData);
+        } catch (imageError) {
+          console.warn('이미지 저장 오류:', imageError);
+          // 이미지 저장 실패는 전체 등록을 실패시키지 않음
+        }
+      }
 
       // 성공 메시지 표시 후 상품 페이지로 이동
       alert('상품이 성공적으로 등록되었습니다!');
-      router.push('/products');
+      router.push(`/products/${createdProduct.id}`); // 등록한 상품 상세 페이지로 이동
 
     } catch (error) {
-      alert('상품 등록 중 오류가 발생했습니다.');
-      console.error(error);
+      alert('상품 등록 중 오류가 발생했습니다: ' + error.message);
+      console.error('상품 등록 오류:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -366,9 +379,17 @@ export default function SellPage() {
                       <input
                         type="number"
                         value={price}
-                        onChange={(e) => setPrice(e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '' || (Number(value) >= 0 && Number(value) <= 99999999.99)) {
+                            setPrice(value);
+                          }
+                        }}
                         placeholder={acceptOffersOnly ? "제안받기로 설정됨" : "0"}
                         disabled={acceptOffersOnly}
+                        max="99999999.99"
+                        min="0"
+                        step="0.01"
                         className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 pr-8 transition-colors ${
                           acceptOffersOnly ? 'bg-gray-100 text-gray-500' : ''
                         } ${
@@ -377,6 +398,7 @@ export default function SellPage() {
                       />
                       <span className="absolute right-3 top-3 text-gray-500">원</span>
                     </div>
+                    <p className="mt-1 text-sm text-gray-500">최대 9999만원(99,999,999원)까지 입력 가능</p>
                     {errors.price && <p className="mt-1 text-sm text-red-600">{errors.price}</p>}
                   </div>
 
@@ -388,9 +410,17 @@ export default function SellPage() {
                       <input
                         type="number"
                         value={originalPrice}
-                        onChange={(e) => setOriginalPrice(e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          if (value === '' || (Number(value) >= 0 && Number(value) <= 99999999.99)) {
+                            setOriginalPrice(value);
+                          }
+                        }}
                         placeholder="0"
                         disabled={acceptOffersOnly}
+                        max="99999999.99"
+                        min="0"
+                        step="0.01"
                         className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 pr-8 transition-colors ${
                           acceptOffersOnly ? 'bg-gray-100 text-gray-500' : ''
                         }`}

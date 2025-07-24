@@ -3,7 +3,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/app/components/Header';
 import ProductCard from '@/app/components/productCard';
-import { sampleProducts } from '@/app/data/products';
+// import { sampleProducts } from '@/app/data/products';
+import { supabaseUtils } from '@/lib/supabase';
 
 // 거리 계산 유틸리티 (Haversine formula)
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -121,6 +122,8 @@ export default function MapPage() {
   }, []);
 
   // 상품 데이터에 위치 정보 추가 (Mock 데이터)
+  // TODO: Supabase로 교체 필요
+  const sampleProducts = []; // 임시로 빈 배열
   const productsWithLocation = sampleProducts.map((product, index) => ({
     ...product,
     location: userLocation ? 

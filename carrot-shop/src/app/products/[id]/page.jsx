@@ -3,14 +3,16 @@ import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import Header from '@/app/components/Header';
 import MannerTemperature from '@/app/components/MannerTemperature';
-import { getProductById } from '@/app/data/products';
+import { supabaseUtils } from '@/lib/supabase';
 
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const productId = parseInt(params.id);
 
-  const product = getProductById(productId);
+  const [product, setProduct] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   
   // 좋아요 기능 개선
@@ -22,36 +24,140 @@ export default function ProductDetailPage() {
   const [comments, setComments] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Supabase에서 상품 데이터 로드
+  useEffect(() => {
+    const loadProduct = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        // 판매자 정보와 함께 조회 시도
+        let data;
+        try {
+          data = await supabaseUtils.products.getByIdWithSeller(productId);
+        } catch (joinError) {
+          console.warn('조인 쿼리 실패, 기본 쿼리로 대체:', joinError);
+          data = await supabaseUtils.products.getById(productId);
+        }
+        
+        // 데이터 변환 (기존 구조와 호환되도록)
+        const transformedProduct = {
+          ...data,
+          desc: data.description,
+          image: data.main_image,
+          images: data.product_images && data.product_images.length > 0 
+            ? data.product_images
+                .sort((a, b) => a.sort_order - b.sort_order)
+                .map(img => img.image_url)
+            : data.main_image ? [data.main_image] : [],
+          createdAt: new Date(data.created_at).toLocaleDateString(),
+          seller: data.user_profiles ? {
+            id: data.user_profiles.id,
+            name: data.user_profiles.name,
+            profileImage: data.user_profiles.profile_image,
+            rating: data.user_profiles.rating || 4.5,
+            reviewCount: data.user_profiles.review_count || 0,
+            responseRate: data.user_profiles.response_rate || '95%',
+            responseTime: data.user_profiles.response_time || '보통 1시간 이내'
+          } : {
+            id: data.seller_id,
+            name: '판매자',
+            profileImage: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100',
+            rating: 4.5,
+            reviewCount: 0,
+            responseRate: '95%',
+            responseTime: '보통 1시간 이내'
+          },
+          specifications: [
+            { label: '카테고리', value: data.category },
+            { label: '상태', value: data.condition || 'good' },
+            { label: '거래방식', value: data.is_free ? '나눔' : data.accept_offers_only ? '가격제안만' : '직거래' },
+            { label: '등록일', value: new Date(data.created_at).toLocaleDateString() }
+          ]
+        };
+        
+        setProduct(transformedProduct);
+      } catch (err) {
+        setError(err.message);
+        console.error('상품 로딩 오류:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (productId) {
+      loadProduct();
+    }
+  }, [productId]);
+
   // LocalStorage에서 데이터 로드 (초기 로드만)
   useEffect(() => {
     if (!product) return;
     
-    const savedLikes = localStorage.getItem(`likes_${productId}`);
-    const savedIsLiked = localStorage.getItem(`isLiked_${productId}`);
-    const savedComments = localStorage.getItem(`comments_${productId}`);
-    
-    if (savedLikes) {
-      setLikes(parseInt(savedLikes));
-    } else if (product.likes) {
-      setLikes(product.likes);
+    try {
+      const savedLikes = localStorage.getItem(`likes_${productId}`);
+      const savedIsLiked = localStorage.getItem(`isLiked_${productId}`);
+      const savedComments = localStorage.getItem(`comments_${productId}`);
+      
+      if (savedLikes) {
+        setLikes(parseInt(savedLikes));
+      } else if (product.likes) {
+        setLikes(product.likes);
+      }
+      
+      if (savedIsLiked) {
+        setIsLiked(JSON.parse(savedIsLiked));
+      }
+      
+      if (savedComments) {
+        setComments(JSON.parse(savedComments));
+      }
+    } catch (error) {
+      console.warn('localStorage 읽기 중 오류:', error.message);
+      // localStorage 읽기 실패 시 기본값 사용
+      if (product.likes) {
+        setLikes(product.likes);
+      }
     }
-    
-    if (savedIsLiked) {
-      setIsLiked(JSON.parse(savedIsLiked));
-    }
-    
-    if (savedComments) {
-      setComments(JSON.parse(savedComments));
-    }
-  }, [productId]); // product 제거하여 무한 루프 방지
+  }, [product, productId]);
 
   // LocalStorage에 데이터 저장 (상태 변경시에만)
   useEffect(() => {
     if (!product || likes === 0 && comments.length === 0 && !isLiked) return; // 초기 상태는 저장 안함
     
-    localStorage.setItem(`likes_${productId}`, likes.toString());
-    localStorage.setItem(`isLiked_${productId}`, JSON.stringify(isLiked));
-    localStorage.setItem(`comments_${productId}`, JSON.stringify(comments));
+    try {
+      localStorage.setItem(`likes_${productId}`, likes.toString());
+      localStorage.setItem(`isLiked_${productId}`, JSON.stringify(isLiked));
+      // 댓글은 용량이 클 수 있으므로 최대 10개만 저장
+      const limitedComments = comments.slice(0, 10);
+      localStorage.setItem(`comments_${productId}`, JSON.stringify(limitedComments));
+    } catch (error) {
+      if (error.name === 'QuotaExceededError') {
+        console.warn('localStorage 용량이 부족합니다. 기존 데이터를 정리합니다.');
+        // localStorage 정리
+        try {
+          // 오래된 상품 데이터 정리 (현재 상품 제외하고 모두 삭제)
+          const keysToRemove = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (key.startsWith('likes_') || key.startsWith('isLiked_') || key.startsWith('comments_')) && !key.includes(productId.toString())) {
+              keysToRemove.push(key);
+            }
+          }
+          keysToRemove.forEach(key => localStorage.removeItem(key));
+          
+          // 다시 저장 시도
+          localStorage.setItem(`likes_${productId}`, likes.toString());
+          localStorage.setItem(`isLiked_${productId}`, JSON.stringify(isLiked));
+          localStorage.setItem(`comments_${productId}`, JSON.stringify(limitedComments));
+        } catch (secondError) {
+          console.warn('localStorage 저장에 실패했습니다:', secondError.message);
+          // localStorage 저장 실패해도 앱 동작에는 문제없음
+        }
+      } else {
+        console.warn('localStorage 저장 중 오류:', error.message);
+      }
+    }
   }, [likes, isLiked, comments, productId]);
 
   // 좋아요 토글 함수
@@ -141,6 +247,66 @@ export default function ProductDetailPage() {
     router.push(`/products?category=${encodeURIComponent(category)}`);
   };
 
+  // 로딩 상태
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header title="상품 상세" showBackButton={true} />
+        <div className="max-w-4xl mx-auto px-4 py-6">
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden animate-pulse">
+            <div className="md:flex">
+              <div className="md:w-1/2">
+                <div className="h-80 md:h-96 bg-gray-200"></div>
+              </div>
+              <div className="md:w-1/2 p-6 space-y-4">
+                <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+                <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                <div className="h-6 bg-gray-200 rounded w-1/4"></div>
+                <div className="space-y-2">
+                  <div className="h-4 bg-gray-200 rounded"></div>
+                  <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                  <div className="h-4 bg-gray-200 rounded w-4/6"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 에러 상태
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-400 mb-4">
+            <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 15.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">상품을 불러올 수 없습니다</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <div className="space-x-4">
+            <button 
+              onClick={() => window.location.reload()}
+              className="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600"
+            >
+              새로고침
+            </button>
+            <button 
+              onClick={() => router.back()}
+              className="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600"
+            >
+              돌아가기
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 상품이 없는 경우
   if (!product) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

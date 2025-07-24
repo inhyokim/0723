@@ -1,146 +1,152 @@
-# 🥕 당근마켓 클론 - Carrot Shop
+# Carrot Shop
 
-> **나눔문화와 매너온도 시스템이 있는 중고거래 플랫폼**
+당근마켓 스타일의 중고거래 플랫폼입니다.
 
-![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)
-![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)
-![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?logo=tailwind-css&logoColor=white)
+## Supabase 설정
 
-## ✨ 주요 기능
+이 프로젝트는 Supabase를 백엔드로 사용합니다.
 
-### 🛍️ 상품 관리
-- **3단계 폼 시스템**: 기본정보 → 상세정보 → 최종확인
-- **실시간 미리보기**: 입력과 동시에 결과 확인
-- **상품 등록/조회/수정**: 완전한 CRUD 기능
+### 1. 환경 변수 설정
 
-### 🔍 검색 & 필터링
-- **통합 검색**: 상품명, 설명, 카테고리, 지역 검색
-- **카테고리 필터링**: 20개+ 카테고리 지원
-- **URL 공유**: 검색 결과와 필터 상태 URL로 공유 가능
+프로젝트 루트에 `.env.local` 파일을 생성하고 다음 내용을 추가하세요:
 
-### 🔥 고급 기능
-- **🥕 나눔 시스템**: 따뜻한 나눔 문화 구현
-- **💰 가격 제안 시스템**: 유연한 거래 협상
-- **🌡️ 매너온도**: 별점을 온도로 변환, 캐릭터 표정 변화
-- **📸 이미지 업로드**: 파일 업로드 및 URL 입력 지원
-- **💾 영구 저장**: LocalStorage 기반 데이터 영속성
+```bash
+# Supabase 설정
+NEXT_PUBLIC_SUPABASE_URL=https://terrepndmyhvbbghxwbt.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRlcnJlcG5kbXlodmJiZ2h4d2J0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzMTU4NzAsImV4cCI6MjA2ODg5MTg3MH0.Zw0d7IFTDLqnNnEg6Wt8qynkLxeZFNxh3-aogkAXRPs
+```
 
-## 🛠️ 기술 스택
+### 2. Supabase 클라이언트 사용법
 
-### Frontend
-- **⚛️ React 19**: 최신 React 기능 활용
-- **🚀 Next.js 15**: App Router, Turbopack 적용
-- **🎨 Tailwind CSS**: 반응형 디자인 시스템
-- **🪝 React Hooks**: 상태 관리 및 URL 상태 관리
+#### 기본 사용법
+```javascript
+import { supabase, supabaseUtils } from '@/lib/supabase'
 
-### UI/UX
-- **🎯 당근마켓 디자인 시스템**: 완벽한 UI 구현
-- **🌈 컬러 시스템**: 
-  - 나눔: 초록색 (#10B981)
-  - 가격 제안: 파란색 (#3B82F6)  
-  - 일반 거래: 주황색 (#FF6B35)
-- **🎪 마이크로 인터랙션**: 부드러운 애니메이션
-- **📱 모바일 최적화**: 터치 친화적 인터페이스
+// 직접 Supabase 클라이언트 사용
+const { data, error } = await supabase
+  .from('products')
+  .select('*')
 
-## 🚀 설치 및 실행
+// 유틸리티 함수 사용 (권장)
+const products = await supabaseUtils.products.getAll()
+```
 
-### 1. 프로젝트 클론
-\`\`\`bash
-git clone [repository-url]
-cd carrot-shop
-\`\`\`
+#### 상품 관련 API
+```javascript
+// 모든 상품 조회
+const products = await supabaseUtils.products.getAll()
 
-### 2. 의존성 설치
-\`\`\`bash
+// 특정 상품 조회
+const product = await supabaseUtils.products.getById(1)
+
+// 상품 추가
+const newProduct = await supabaseUtils.products.create({
+  title: '새 상품',
+  description: '상품 설명',
+  price: 50000,
+  category: '디지털기기'
+})
+
+// 상품 수정
+const updatedProduct = await supabaseUtils.products.update(1, {
+  price: 45000
+})
+
+// 상품 삭제
+await supabaseUtils.products.delete(1)
+
+// 카테고리별 조회
+const products = await supabaseUtils.products.getByCategory('디지털기기')
+
+// 검색
+const products = await supabaseUtils.products.search('아이폰')
+```
+
+#### 사용자 인증 API
+```javascript
+// 회원가입
+const { user } = await supabaseUtils.users.signUp(
+  'user@example.com', 
+  'password',
+  { name: '사용자명' }
+)
+
+// 로그인
+const { user } = await supabaseUtils.users.signIn('user@example.com', 'password')
+
+// 현재 사용자 조회
+const user = await supabaseUtils.users.getCurrentUser()
+
+// 로그아웃
+await supabaseUtils.users.signOut()
+```
+
+#### 실시간 구독
+```javascript
+// 상품 변경사항 실시간 구독
+const subscription = supabaseUtils.subscriptions.subscribeToProducts((payload) => {
+  console.log('상품 변경:', payload)
+})
+
+// 채팅 메시지 실시간 구독
+const chatSubscription = supabaseUtils.subscriptions.subscribeToChat(chatId, (payload) => {
+  console.log('새 메시지:', payload)
+})
+
+// 구독 해제
+subscription.unsubscribe()
+```
+
+### 3. Supabase 데이터베이스 스키마 예시
+
+상품 테이블 (products):
+```sql
+CREATE TABLE products (
+  id BIGSERIAL PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  price DECIMAL(10,2),
+  category TEXT,
+  image_url TEXT,
+  seller_id UUID REFERENCES auth.users(id),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+### 4. 실행
+
+```bash
 npm install
-# 또는
-yarn install
-# 또는
-pnpm install
-\`\`\`
-
-### 3. 개발 서버 실행
-\`\`\`bash
 npm run dev
-# 또는
-yarn dev
-# 또는
-pnpm dev
-\`\`\`
+```
 
-### 4. 브라우저에서 확인
-[http://localhost:3000](http://localhost:3000)에서 결과를 확인하세요.
+## 기능
 
-## 📁 프로젝트 구조
+- 상품 등록/수정/삭제
+- 상품 검색 및 필터링
+- 카테고리별 상품 보기
+- 실시간 채팅
+- 사용자 인증
+- 이미지 업로드
 
-\`\`\`
-src/
-├── app/
-│   ├── api/
-│   │   └── products/          # 상품 API 엔드포인트
-│   ├── components/
-│   │   ├── Header.jsx         # 네비게이션 헤더
-│   │   ├── MannerTemperature.jsx  # 매너온도 컴포넌트
-│   │   └── productCard.jsx    # 상품 카드 컴포넌트
-│   ├── data/
-│   │   └── products.js        # 상품 데이터
-│   ├── products/
-│   │   ├── [id]/
-│   │   │   └── page.jsx       # 상품 상세 페이지
-│   │   └── page.jsx           # 상품 목록 페이지
-│   ├── sell/
-│   │   └── page.jsx           # 상품 판매 등록 페이지
-│   ├── globals.css            # 글로벌 스타일
-│   ├── layout.js              # 레이아웃 컴포넌트
-│   └── page.js                # 홈 페이지
-\`\`\`
+## 기술 스택
 
-## 🎯 주요 페이지
+- **Frontend**: Next.js 15, React 19, Tailwind CSS
+- **Backend**: Supabase (PostgreSQL, 실시간 기능, 인증)
+- **배포**: Vercel (권장)
 
-- **🏠 홈페이지** (`/`): 최신 상품 및 나눔 아이템 표시
-- **🛍️ 상품 목록** (`/products`): 전체 상품 검색 및 필터링
-- **📋 상품 상세** (`/products/[id]`): 상품 상세 정보 및 가격 제안
-- **📝 상품 등록** (`/sell`): 3단계 상품 등록 프로세스
+## 컴포넌트 구조
 
-## 🌡️ 매너온도 시스템
-
-매너온도는 사용자의 거래 매너를 나타내는 독특한 시스템입니다:
-
-- **36.5°C**: 기본 온도 (😐)
-- **37°C 이상**: 따뜻한 사용자 (😊)
-- **40°C 이상**: 매우 매너 좋은 사용자 (😄)
-- **36°C 미만**: 주의가 필요한 사용자 (😟)
-
-## 🥕 나눔 문화
-
-당근마켓의 특별한 나눔 문화를 구현했습니다:
-- 무료 나눔 상품 별도 표시
-- 나눔 전용 카테고리 및 필터
-- 따뜻한 나눔 메시지 시스템
-
-## 📱 반응형 디자인
-
-모든 화면 크기에서 최적화된 경험을 제공합니다:
-- **📱 모바일**: 터치 최적화, 하단 네비게이션
-- **💻 태블릿**: 그리드 레이아웃 조정
-- **🖥️ 데스크톱**: 넓은 화면 활용
-
-## 🤝 기여하기
-
-1. Fork the Project
-2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the Branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📄 라이선스
-
-이 프로젝트는 MIT 라이선스 하에 있습니다.
-
-## 📞 문의
-
-프로젝트에 대한 질문이나 제안사항이 있으시면 이슈를 생성해주세요.
-
----
-
-**Made with ❤️ by [Your Name] - 따뜻한 나눔문화를 만들어가는 당근마켓 클론**
+```
+src/app/
+├── components/
+│   ├── Header.jsx
+│   ├── ProductCard.jsx
+│   ├── MannerTemperature.jsx
+│   └── SupabaseExample.jsx    # Supabase 사용 예시
+├── lib/
+│   └── supabase.js            # Supabase 클라이언트 설정
+└── data/
+    └── products.js            # 임시 데이터 (개발용)
+```

@@ -1,6 +1,51 @@
+'use client';
 import Link from "next/link";
+import { useState, useEffect } from 'react';
+import { supabaseUtils } from '@/lib/supabase';
+import ProductCard from './components/productCard';
 
 export default function Home() {
+  const [recentProducts, setRecentProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // 최신 상품 로드
+  useEffect(() => {
+    const loadRecentProducts = async () => {
+      try {
+        const data = await supabaseUtils.products.getAllWithSeller();
+        
+        // 최신 6개 상품만 가져오기
+        const recentData = data.slice(0, 6).map(product => ({
+          ...product,
+          desc: product.description,
+          image: product.main_image,
+          images: product.product_images && product.product_images.length > 0 
+            ? product.product_images
+                .sort((a, b) => a.sort_order - b.sort_order)
+                .map(img => img.image_url)
+            : product.main_image ? [product.main_image] : [],
+          createdAt: new Date(product.created_at).toLocaleDateString(),
+          seller: {
+            id: product.seller_id,
+            name: '판매자',
+            profileImage: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100',
+            rating: 4.5,
+            reviewCount: 10,
+            responseRate: '95%',
+            responseTime: '보통 1시간 이내'
+          }
+        }));
+        
+        setRecentProducts(recentData);
+      } catch (error) {
+        console.error('상품 로딩 오류:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRecentProducts();
+  }, []);
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-orange-100">
       {/* 헤더 */}
@@ -68,7 +113,7 @@ export default function Home() {
             <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <svg className="w-8 h-8 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 616 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
             <h3 className="text-xl font-semibold mb-2">우리 동네 거래</h3>
@@ -136,6 +181,63 @@ export default function Home() {
               </Link>
             </div>
           </div>
+        </div>
+
+        {/* 최신 상품 섹션 */}
+        <div className="mb-16">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-900 mb-4">🔥 최신 등록 상품</h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              지금 막 등록된 따끈따끈한 상품들을 확인해보세요
+            </p>
+          </div>
+          
+          {loading ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white rounded-xl shadow-sm animate-pulse">
+                  <div className="h-48 bg-gray-200 rounded-t-xl"></div>
+                  <div className="p-4 space-y-3">
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : recentProducts.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {recentProducts.map(product => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+              <div className="text-center mt-8">
+                <Link 
+                  href="/products"
+                  className="inline-block bg-orange-500 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-orange-600 transition-colors shadow-lg"
+                >
+                  더 많은 상품 보기
+                </Link>
+              </div>
+            </>
+          ) : (
+            <div className="text-center py-16">
+              <div className="text-gray-400 mb-4">
+                <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2M4 13h2m8-8h4m-4 8h4" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">아직 등록된 상품이 없어요</h3>
+              <p className="text-gray-500 mb-6">첫 번째 상품을 등록해보세요!</p>
+              <Link 
+                href="/sell"
+                className="inline-block bg-orange-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-orange-600 transition-colors"
+              >
+                상품 등록하기
+              </Link>
+            </div>
+          )}
         </div>
 
         {/* CTA 섹션 */}
