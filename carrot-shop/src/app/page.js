@@ -316,32 +316,7 @@ export default function Home() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {recentProducts.map(product => {
                   console.log('🔧 ProductCard 렌더링:', { id: product.id, title: product.title });
-                  // 임시로 간단한 div로 렌더링해서 문제 진단
-                  return (
-                    <div key={product.id} className="bg-white rounded-lg shadow-md p-4 border">
-                      <div className="mb-3">
-                        <img 
-                          src={product.image} 
-                          alt={product.title}
-                          className="w-full h-48 object-cover rounded"
-                          onError={(e) => {
-                            e.target.src = 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=300&fit=crop';
-                          }}
-                        />
-                      </div>
-                      <h3 className="font-semibold text-lg mb-2">{product.title}</h3>
-                      <p className="text-gray-600 text-sm mb-2">{product.desc}</p>
-                      <div className="flex justify-between items-center">
-                        <span className="text-orange-600 font-bold">
-                          {product.isFree ? '무료 나눔' : `${(product.price || 0).toLocaleString()}원`}
-                        </span>
-                        <span className="text-gray-500 text-sm">{product.location}</span>
-                      </div>
-                      <div className="mt-2 text-sm text-gray-500">
-                        ❤️ {product.likes} | 💬 {product.chats}
-                      </div>
-                    </div>
-                  );
+                  return <ProductCard key={product.id} product={product} />;
                 })}
               </div>
               <div className="text-center mt-8">
