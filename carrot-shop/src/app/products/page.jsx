@@ -123,52 +123,113 @@ function ProductsContent() {
       setLoading(true);
       setError(null);
       
+      console.log('🔍 [상품둘러보기] 데이터 로딩 시작...');
+      
       // 판매자 정보와 함께 조회 시도
       let data;
       try {
+        console.log('📊 [상품둘러보기] getAllWithSeller 호출...');
         data = await supabaseUtils.products.getAllWithSeller();
+        console.log('✅ [상품둘러보기] getAllWithSeller 성공:', {
+          isArray: Array.isArray(data),
+          length: data?.length || 0,
+          firstItem: data?.[0] || null
+        });
       } catch (joinError) {
-        console.warn('조인 쿼리 실패, 기본 쿼리로 대체:', joinError);
+        console.warn('⚠️ [상품둘러보기] 조인 쿼리 실패, 기본 쿼리로 대체:', joinError);
         // 조인 쿼리 실패 시 기본 쿼리로 대체
         data = await supabaseUtils.products.getAll();
+        console.log('✅ [상품둘러보기] getAll 성공:', {
+          isArray: Array.isArray(data),
+          length: data?.length || 0,
+          firstItem: data?.[0] || null
+        });
       }
       
-              // 데이터 변환 (기존 구조와 호환되도록)
-        const transformedData = data.map(product => ({
+      if (!Array.isArray(data)) {
+        console.error('❌ [상품둘러보기] data가 배열이 아님!', typeof data, data);
+        setProducts([]);
+        return;
+      }
+
+      console.log('🔄 [상품둘러보기] 데이터 변환 시작...');
+      
+      // 데이터 변환 (기존 구조와 호환되도록)
+      const transformedData = data.map((product, index) => {
+        console.log(`📦 [상품둘러보기] 상품 ${index + 1} 변환:`, {
+          id: product.id,
+          title: product.title,
+          description: product.description,
+          main_image: product.main_image,
+          category: product.category,
+          price: product.price
+        });
+        
+        return {
           ...product,
-          desc: product.description, // description -> desc로 변환
-          image: product.main_image,  // main_image -> image로 변환
+          desc: product.description || '상품 설명이 없습니다', // description -> desc로 변환
+          image: product.main_image || 'https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=300&fit=crop',  // main_image -> image로 변환
           images: product.product_images && product.product_images.length > 0 
             ? product.product_images
                 .sort((a, b) => a.sort_order - b.sort_order)
                 .map(img => img.image_url)
-            : product.main_image ? [product.main_image] : [],
+            : product.main_image ? [product.main_image] : ['https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=400&h=300&fit=crop'],
           createdAt: new Date(product.created_at).toLocaleDateString(),
-        seller: product.user_profiles ? {
-          id: product.user_profiles.id,
-          name: product.user_profiles.name,
-          profileImage: product.user_profiles.profile_image,
-          rating: product.user_profiles.rating || 4.5,
-          reviewCount: product.user_profiles.review_count || 0,
-          responseRate: product.user_profiles.response_rate || '95%',
-          responseTime: product.user_profiles.response_time || '보통 1시간 이내'
-        } : {
-          id: product.seller_id,
-          name: '판매자',
-          profileImage: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100',
-          rating: 4.5,
-          reviewCount: 0,
-          responseRate: '95%',
-          responseTime: '보통 1시간 이내'
-        }
-      }));
+          
+          // ProductCard가 기대하는 모든 필드들 안전하게 설정
+          title: product.title || '제목 없음',
+          price: product.is_free ? 0 : (product.price || 0),
+          originalPrice: product.original_price || null,
+          isFree: product.is_free || false,
+          acceptOffersOnly: product.accept_offers_only || false,
+          negotiable: product.is_negotiable || false,
+          status: product.status || '판매중',
+          category: product.category || '기타',
+          condition: product.condition || '사용감 있음',
+          location: product.location || '위치 정보 없음',
+          likes: product.likes || 0,
+          chats: product.chats || 0,
+          views: product.views || 0,
+          
+          seller: product.user_profiles ? {
+            id: product.user_profiles.id,
+            name: product.user_profiles.name || '판매자',
+            profileImage: product.user_profiles.profile_image || 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100',
+            rating: product.user_profiles.rating || 4.5,
+            reviewCount: product.user_profiles.review_count || 0,
+            responseRate: product.user_profiles.response_rate || '95%',
+            responseTime: product.user_profiles.response_time || '보통 1시간 이내'
+          } : {
+            id: product.seller_id || 'unknown',
+            name: '판매자',
+            profileImage: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100',
+            rating: 4.5,
+            reviewCount: 0,
+            responseRate: '95%',
+            responseTime: '보통 1시간 이내'
+          }
+        };
+      });
+      
+      console.log('🎯 [상품둘러보기] 최종 변환 결과:', {
+        count: transformedData.length,
+        samples: transformedData.slice(0, 2).map(p => ({
+          id: p.id,
+          title: p.title,
+          price: p.price,
+          category: p.category,
+          status: p.status
+        }))
+      });
       
       setProducts(transformedData);
+      console.log('✅ [상품둘러보기] setProducts 완료');
     } catch (err) {
+      console.error('❌ [상품둘러보기] 오류 발생:', err);
       setError(err.message);
-      console.error('상품 로딩 오류:', err);
     } finally {
       setLoading(false);
+      console.log('🏁 [상품둘러보기] 로딩 완료');
     }
   }, []);
 
@@ -235,40 +296,78 @@ function ProductsContent() {
 
   // 필터링된 상품 목록
   const filteredProducts = useMemo(() => {
+    console.log('🔍 [상품둘러보기] 필터링 시작:', {
+      totalProducts: products.length,
+      selectedCategory,
+      searchKeyword,
+      sortBy
+    });
+    
     let filtered = products;
 
     // 카테고리 필터링
     if (selectedCategory !== '전체') {
+      const beforeCount = filtered.length;
       filtered = filtered.filter(product => product.category === selectedCategory);
+      console.log(`📂 [상품둘러보기] 카테고리 필터링 (${selectedCategory}):`, {
+        before: beforeCount,
+        after: filtered.length
+      });
     }
 
     // 검색어 필터링
     if (searchKeyword) {
+      const beforeCount = filtered.length;
       const keyword = searchKeyword.toLowerCase();
       filtered = filtered.filter(product => {
         const locationText = product.location && typeof product.location === 'object' 
           ? product.location.name || ''
           : product.location || '';
         
-        return product.title.toLowerCase().includes(keyword) ||
-          (product.desc && product.desc.toLowerCase().includes(keyword)) ||
-          locationText.toLowerCase().includes(keyword);
+        const titleMatch = product.title.toLowerCase().includes(keyword);
+        const descMatch = product.desc && product.desc.toLowerCase().includes(keyword);
+        const locationMatch = locationText.toLowerCase().includes(keyword);
+        
+        return titleMatch || descMatch || locationMatch;
+      });
+      console.log(`🔍 [상품둘러보기] 검색어 필터링 (${searchKeyword}):`, {
+        before: beforeCount,
+        after: filtered.length
       });
     }
 
     // 정렬
     switch (sortBy) {
       case 'priceHigh':
-        return [...filtered].sort((a, b) => (b.price || 0) - (a.price || 0));
+        filtered = [...filtered].sort((a, b) => (b.price || 0) - (a.price || 0));
+        console.log('💰 [상품둘러보기] 가격 높은순 정렬');
+        break;
       case 'priceLow':
-        return [...filtered].sort((a, b) => (a.price || 0) - (b.price || 0));
+        filtered = [...filtered].sort((a, b) => (a.price || 0) - (b.price || 0));
+        console.log('💰 [상품둘러보기] 가격 낮은순 정렬');
+        break;
       case 'likes':
-        return [...filtered].sort((a, b) => b.likes - a.likes);
+        filtered = [...filtered].sort((a, b) => b.likes - a.likes);
+        console.log('❤️ [상품둘러보기] 좋아요순 정렬');
+        break;
       case 'latest':
       default:
-        return filtered;
+        console.log('📅 [상품둘러보기] 최신순 정렬 (기본)');
+        break;
     }
-  }, [searchKeyword, selectedCategory, sortBy]);
+    
+    console.log('✅ [상품둘러보기] 최종 필터링 결과:', {
+      count: filtered.length,
+      samples: filtered.slice(0, 3).map(p => ({
+        id: p.id,
+        title: p.title,
+        category: p.category,
+        price: p.price
+      }))
+    });
+
+    return filtered;
+  }, [products, searchKeyword, selectedCategory, sortBy]);
 
   // 로딩 상태 처리
   if (loading) {
@@ -384,23 +483,45 @@ function ProductsContent() {
 
         {/* 상품 그리드 */}
         {filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredProducts.map(product => (
-              <div key={product.id} className="relative">
-                <ProductCard product={product} />
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-16">
-            <div className="text-gray-400 mb-4">
-              <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+          <>
+            {console.log('🎨 [상품둘러보기] 상품 그리드 렌더링 시작:', { 
+              count: filteredProducts.length,
+              products: filteredProducts.slice(0, 3).map(p => ({ id: p.id, title: p.title }))
+            })}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredProducts.map((product, index) => {
+                console.log(`🛍️ [상품둘러보기] ProductCard ${index + 1} 렌더링:`, {
+                  id: product.id,
+                  title: product.title,
+                  price: product.price,
+                  category: product.category
+                });
+                return (
+                  <div key={product.id} className="relative">
+                    <ProductCard product={product} />
+                  </div>
+                );
+              })}
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">검색 결과가 없습니다</h3>
-            <p className="text-gray-500">다른 검색어나 카테고리를 시도해보세요.</p>
-          </div>
+          </>
+        ) : (
+          <>
+            {console.log('📭 [상품둘러보기] 빈 상태 렌더링:', { 
+              filteredProductsLength: filteredProducts.length,
+              totalProductsLength: products.length,
+              selectedCategory,
+              searchKeyword
+            })}
+            <div className="text-center py-16">
+              <div className="text-gray-400 mb-4">
+                <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">검색 결과가 없습니다</h3>
+              <p className="text-gray-500">다른 검색어나 카테고리를 시도해보세요.</p>
+            </div>
+          </>
         )}
       </main>
     </div>
