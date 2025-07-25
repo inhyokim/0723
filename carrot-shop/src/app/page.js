@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabaseUtils } from '@/lib/supabase';
-import ProductCard from './components/productCard';
+import SimpleProductCard from './components/SimpleProductCard';
 
 export default function Home() {
   const [recentProducts, setRecentProducts] = useState([]);
@@ -316,7 +316,7 @@ export default function Home() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {recentProducts.map(product => {
                   console.log('🔧 ProductCard 렌더링:', { id: product.id, title: product.title });
-                  return <ProductCard key={product.id} product={product} />;
+                  return <SimpleProductCard key={product.id} product={product} />;
                 })}
               </div>
               <div className="text-center mt-8">

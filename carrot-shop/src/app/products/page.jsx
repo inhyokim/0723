@@ -1,5 +1,5 @@
 'use client';
-import ProductCard from '@/app/components/productCard';
+import SimpleProductCard from '@/app/components/SimpleProductCard';
 import Header from '@/app/components/Header';
 import { supabaseUtils } from '@/lib/supabase';
 import { useState, useMemo, useEffect, useCallback, Suspense } from 'react';
@@ -498,7 +498,7 @@ function ProductsContent() {
                 });
                 return (
                   <div key={product.id} className="relative">
-                    <ProductCard product={product} />
+                    <SimpleProductCard product={product} />
                   </div>
                 );
               })}

@@ -3,6 +3,7 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import ProductCard from '@/app/components/productCard';
 import Header from '@/app/components/Header';
+import LocationSelector from '@/app/components/LocationSelector';
 import { supabaseUtils } from '@/lib/supabase';
 
 export default function SellPage() {
@@ -64,6 +65,7 @@ export default function SellPage() {
     
     if (!category) newErrors.category = '카테고리를 선택해주세요';
     if (!condition) newErrors.condition = '상품 상태를 선택해주세요';
+    if (!location) newErrors.location = '거래 지역을 선택해주세요';
     if (!images[0]) newErrors.images = '최소 1개의 이미지를 등록해주세요';
 
     setErrors(newErrors);
@@ -608,15 +610,13 @@ export default function SellPage() {
               {/* 거래지역 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  거래 지역
+                  거래 지역 *
                 </label>
-                <input
-                  type="text"
+                <LocationSelector
                   value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="예: 서울시 강남구 역삼동"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 transition-colors"
+                  onChange={setLocation}
                 />
+                {errors.location && <p className="mt-1 text-sm text-red-600">{errors.location}</p>}
               </div>
 
               {/* 상품 이미지 - 파일 업로드 + URL 지원 */}

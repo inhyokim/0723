@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import ProductCard from '@/app/components/productCard';
 import Header from '@/app/components/Header';
+import LocationSelector from '@/app/components/LocationSelector';
 
 export default function EditProductPage() {
   const router = useRouter();
@@ -569,12 +570,9 @@ export default function EditProductPage() {
               {/* 거래지역 */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">거래 지역</label>
-                <input
-                  type="text"
+                <LocationSelector
                   value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="예: 서울시 강남구 역삼동"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  onChange={setLocation}
                 />
               </div>
 
